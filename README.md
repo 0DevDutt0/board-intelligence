@@ -39,8 +39,12 @@ PDF Upload
     - Fusion: Reciprocal Rank Fusion (k=60) -> merged top-50
     - Reranker: BGE-Reranker-v2-m3 cross-encoder -> top-12, then
       filtered by score threshold (>= 0.10, min 3 kept)
-    - Optional HyDE: short queries (<6 words) generate a hypothetical
-      answer first, then embed that for improved recall
+    - BM25 acronym expansion: GDA/GIC/MCS/HSSC and 15+ governance
+      acronyms expanded bidirectionally before tokenization so both
+      abbreviated and full-form chunks are matched
+    - Optional HyDE: queries >= 6 words generate a governance-domain
+      hypothetical answer, concatenated with the original query before
+      dense embedding for improved recall without losing keyword anchoring
     |
     v
 [4] Augmented Generation
@@ -60,14 +64,21 @@ PDF Upload
     - NLI hallucination guard (DeBERTa-v3-small, CPU, async):
       per-sentence entailment against retrieved passages (threshold 0.70)
     - Governance verb check: flags authority inflation ("approves" when
-      source says "advises") and scope broadening ("manages" vs "reviews")
-    - Numeric check: every number in the response must appear verbatim
-      in at least one retrieved passage
+      source says "advises") and scope broadening ("manages" vs "reviews");
+      skips sentences that already name the Board/management as actor
+    - Numeric check: digit-form numbers (>= 4 digits) and word-form
+      quantities ("four", "third", "twenty") must appear in source chunks
     - Structured warnings: each warning carries {message, snippet} so
-      the UI can link it to the specific bullet that triggered it
+      the UI can link it to the specific bullet that triggered it;
+      messages written as correction prose ("approves" -- the source
+      says the committee advises the Board here...)
     |
     v
-FastAPI SSE stream -> React frontend (amber highlights on flagged bullets)
+FastAPI SSE stream -> React frontend
+    - Amber left border on bullets whose verb is flagged
+    - Source panel shows "Strong / Good / Weak match" quality labels
+    - React ErrorBoundary catches JS crashes with retry UI
+    - Error SSE events render as styled alert with recovery hint
 ```
 
 ---
@@ -80,7 +91,7 @@ Dense and sparse retrieval return independent ranked lists. RRF combines them wi
 rrf_score(chunk) = sum over each list of: 1 / (k + rank_in_that_list)
 ```
 
-With `k=60`, a chunk ranked first in both lists scores `2/61 ≈ 0.033`. Chunks appearing in only one list get `1/61`. The merged list is re-ranked by descending fused score, then the top-50 go to the cross-encoder reranker which produces a final top-5 for generation.
+With `k=60`, a chunk ranked first in both lists scores `2/61 ≈ 0.033`. Chunks appearing in only one list get `1/61`. The merged list is re-ranked by descending fused score, then the top-50 go to the cross-encoder reranker which produces a final top-12 shortlist, further filtered by a minimum score threshold (0.10) before generation.
 
 This approach consistently outperforms single-modality retrieval: BM25 handles exact terminology and acronyms; dense retrieval handles semantic paraphrase; the cross-encoder reranker does precision scoring on the shortlist.
 
@@ -147,7 +158,8 @@ board-intelligence/
 ├── models/                      # Model weights (downloaded separately)
 ├── scripts/
 │   ├── download_models.py       # Download all 4 models to /models/
-│   └── verify_gpu.py            # Confirm CUDA 12.8 + sm_120 setup
+│   ├── verify_gpu.py            # Confirm CUDA 12.8 + sm_120 setup
+│   └── bundle_airgap.py         # Build offline deployment tarball
 ├── src/
 │   ├── ingestion/
 │   │   ├── parser.py            # Docling primary, PyMuPDF fallback
@@ -177,7 +189,8 @@ board-intelligence/
 │   └── utils/
 │       ├── config.py            # Pydantic Settings (env-configurable)
 │       ├── logger.py            # Structured stdout logger
-│       └── security.py          # SHA-256 PDF hash, AES-256-GCM utils
+│       ├── security.py          # SHA-256 PDF hash, AES-256-GCM utils
+│       └── acronym_expander.py  # BM25 governance acronym expansion
 ├── tests/
 │   ├── unit/
 │   │   ├── test_parser.py
@@ -272,7 +285,7 @@ Access the UI at `http://localhost:5173`.
 3. Wait for ingestion to complete (shown in status bar)
 4. Ask questions in natural language
 5. Answers stream in real-time with `[Page N]` citation links
-6. The right panel shows the top-5 retrieved passages with reranker scores
+6. The right panel shows retrieved passages with "Strong / Good / Weak match" quality labels
 
 ### API
 
@@ -394,17 +407,18 @@ Sessions are ephemeral by design:
 
 ## Performance Targets
 
-| Metric | Target | Phase 1 Result |
+| Metric | Target | Latest Result |
 |---|---|---|
 | Ingest time (100-page PDF) | < 120 seconds | Passes |
 | Query to first token | < 4 seconds | Passes |
-| Full response (200 words) | < 12 seconds avg | 11.32s avg |
-| Citation coverage | > 90% of bullets cited | 98.0% |
+| Full response (200 words) | < 12 seconds avg | 11.51s avg |
+| Citation coverage | > 90% of bullets cited | 98.8% |
 | Keyword recall | > 80% | 100.0% |
 | Page recall | > 70% | 100.0% |
 | Abstention accuracy | 100% on adversarial | 100.0% |
+| Avg warnings (non-adversarial) | < 2.0 per query | 0.75 |
 
-The RAG eval golden set (15 Holcim-specific Q&A pairs) is run fully locally with no external API calls. All Phase 1 targets are met as of the current build.
+The RAG eval golden set (15 Holcim-specific Q&A pairs) is run fully locally with no external API calls. All targets are met as of the current build. Results reflect the Phase 2 + Phase 3 improvements including HyDE fix, acronym expansion, and guard calibration.
 
 Typical performance on RTX 5090 with Qwen3-14B-AWQ + FlashInfer:
 - LLM throughput: ~140-160 tokens/second
@@ -481,8 +495,9 @@ All settings are read from environment variables or `.env`. Key tunables:
 | `RERANKER_MIN_SCORE` | `0.10` | Drop chunks below this score (min 3 always kept) |
 | `BM25_K1` | `1.2` | BM25 term frequency saturation (higher = less saturation) |
 | `BM25_B` | `0.5` | BM25 length normalization (lower = less penalty for long chunks) |
-| `USE_HYDE` | `true` | Enable HyDE for short queries |
-| `HYDE_MIN_QUERY_WORDS` | `6` | Trigger HyDE if query has fewer words |
+| `USE_HYDE` | `true` | Enable HyDE query expansion |
+| `HYDE_MIN_QUERY_WORDS` | `6` | Minimum query words to trigger HyDE |
+| `HYDE_CONCAT_QUERY` | `true` | Prepend original query to hypothetical before embedding |
 | `NLI_ENTAILMENT_THRESHOLD` | `0.70` | Sentence verification threshold |
 | `CHUNK_TARGET_TOKENS` | `500` | Target chunk size |
 | `CHUNK_OVERLAP_TOKENS` | `50` | Overlap between adjacent chunks |
@@ -508,6 +523,36 @@ Board documents are confidential. Encrypting in-memory session state ensures tha
 
 **Why RRF over learned fusion?**
 RRF requires no training data, has no hyperparameters that drift with document distribution, and is provably robust across query types. The constant `k=60` was established in the original paper and remains the standard default.
+
+---
+
+## Air-Gap Deployment
+
+To deploy the system on a machine with no internet access:
+
+```bash
+# On the internet-connected build machine (after docker compose up --build):
+python scripts/bundle_airgap.py
+```
+
+This script:
+1. Verifies all model weights are present in `./models/`
+2. Builds all three Docker images
+3. Saves each image as a `.tar` file
+4. Copies source files and configuration templates
+5. Writes a `load_and_run.sh` helper script
+6. Packages everything as `dist/board-intelligence-YYYYMMDD_HHMMSS.tar.gz`
+
+On the air-gapped target machine:
+
+```bash
+tar -xzf board-intelligence-*.tar.gz
+cd board-intelligence-bundle
+./load_and_run.sh
+# Edit .env to set SESSION_SECRET_KEY, then docker compose up
+```
+
+The bundle does not include model weights — transfer `./models/` separately if the target machine has never run the system before.
 
 ---
 
