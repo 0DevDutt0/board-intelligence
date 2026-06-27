@@ -430,8 +430,8 @@ def _check_event_attribution(sentence: str, chunks: list) -> list:
         )
         if shareholder_window.search(all_chunk_text):
             warnings.append(
-                f'Event attribution: "{pct}" in source is associated with '
-                f'shareholder/AGM approval, not the committee'
+                f'"{pct}" -- in the source this figure is linked to '
+                f'shareholder/AGM approval, not a committee decision'
             )
             break
 
@@ -443,7 +443,7 @@ def _check_event_attribution(sentence: str, chunks: list) -> list:
         )
         if board_window.search(all_chunk_text):
             warnings.append(
-                f'Event attribution: "{pct}" in source is associated with '
+                f'"{pct}" -- in the source this figure is linked to '
                 f'a Board of Directors decision, not the committee'
             )
             break
@@ -474,8 +474,8 @@ def _check_scope_broadening(sentence: str, chunks: list) -> list:
             continue  # verb is in source -- acceptable paraphrase
         if _advisory_in_committee_chunks(chunks):
             warnings.append(
-                f'Scope broadening (low severity): "{verb}" implies operational '
-                f'responsibility; source uses advisory language (discusses/reviews)'
+                f'"{verb}" -- implies more operational authority than the source '
+                f'supports; retrieved passages use discusses/reviews for the committee'
             )
 
     return warnings
@@ -516,12 +516,12 @@ def _check_verb_inflation(sentence: str, chunks: list) -> list:
             # Cases 1 and 2
             if _advisory_in_committee_chunks(chunks):
                 warnings.append(
-                    f'Semantic inflation: "{verb}" not in source '
-                    f'(source uses advisory language: reviews/discusses/advises)'
+                    f'"{verb}" -- not found in the source; the retrieved passages '
+                    f'use advisory language (reviews/discusses/advises) for the committee'
                 )
             else:
                 warnings.append(
-                    f'Semantic inflation: "{verb}" not found in retrieved passages'
+                    f'"{verb}" -- not found in the retrieved passages'
                 )
             continue
 
@@ -535,20 +535,20 @@ def _check_verb_inflation(sentence: str, chunks: list) -> list:
         if other_body:
             # Case 3: verb explicitly belongs to another body.
             warnings.append(
-                f'Attribution error: "{verb}" in source belongs to '
-                f'"{other_body}", not the committee'
+                f'"{verb}" -- in the source this is attributed to the '
+                f'{other_body}, not the committee'
             )
         elif _advisory_in_committee_chunks(chunks):
             # Case 4: committee chunks use advisory language; exec verb appears
             # elsewhere (likely via "advises Board... It [exec verb]" pattern).
             warnings.append(
-                f'Authority transfer: source advises the Board on this topic; '
-                f'"{verb}" likely belongs to the Board, not the committee'
+                f'"{verb}" -- the source says the committee advises the Board '
+                f'here; this verb likely belongs to the Board, not the committee'
             )
         else:
             warnings.append(
-                f'Semantic inflation: "{verb}" not clearly attributed to the '
-                f'committee in retrieved passages'
+                f'"{verb}" -- not clearly attributed to the committee '
+                f'in the retrieved passages'
             )
 
     return warnings
@@ -601,7 +601,7 @@ class HallucinationGuard:
                     continue
                 if not _num_present_in_text(num, all_chunk_text):
                     numeric_warnings.append(
-                        f'Number {num} not found verbatim in retrieved passages'
+                        f'"{num}" -- this figure does not appear verbatim in the retrieved passages'
                     )
 
         verb_warnings = _check_verb_inflation(sentence, chunks)
@@ -645,8 +645,8 @@ class HallucinationGuard:
 
             if page_num not in retrieved_pages:
                 warnings.append(
-                    f'Citation mismatch: [Page {page_num}] cited but no retrieved '
-                    f'chunk from that page (retrieved: {sorted(retrieved_pages)})'
+                    f'[Page {page_num}] cited but no matching passage was retrieved '
+                    f'from that page -- this citation cannot be verified'
                 )
                 warned_pages.add(page_num)
                 continue
@@ -681,10 +681,9 @@ class HallucinationGuard:
                     ) / len(claim_words)
                     if best_overlap > overlap + 0.30:
                         warnings.append(
-                            f'Citation mismatch: [Page {page_num}] has weak '
-                            f'lexical support for this claim '
-                            f'(overlap {overlap:.0%}); '
-                            f'page {best_page} appears stronger '
+                            f'[Page {page_num}] has weak overlap with this claim '
+                            f'({overlap:.0%} shared keywords); '
+                            f'page {best_page} appears to be a better source '
                             f'({best_overlap:.0%} overlap)'
                         )
                         warned_pages.add(page_num)
@@ -708,7 +707,11 @@ class HallucinationGuard:
             snippet = sentence[:80]
             if not verified:
                 warnings.append({
-                    'message': f'Low confidence ({score:.2f}): "{sentence[:80]}..."',
+                    'message': (
+                        f'"{sentence[:60]}..." -- '
+                        f'low support ({score:.2f}); this claim is not clearly '
+                        f'backed by the retrieved passages'
+                    ),
                     'snippet': snippet,
                 })
             for w in extra_warns:
