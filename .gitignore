@@ -1,0 +1,44 @@
+# /home/claude/board-intelligence/.gitignore
+
+# Environment
+.env
+*.env.local
+
+# Models (large binary files - download separately)
+models/
+!models/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Docker
+.dockerignore
+
+# Session temp files
+/tmp/bis-sessions/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/

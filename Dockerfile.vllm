@@ -1,0 +1,80 @@
+# /home/claude/board-intelligence/Dockerfile.vllm
+# vLLM inference server on a CLEAN CUDA 12.8 base (no NGC PyTorch pre-installs).
+#
+# The NGC PyTorch base (nvcr.io/nvidia/pytorch:25.02-py3) ships flash_attn, scipy,
+# and opencv compiled against PyTorch 2.7.0a0.  vLLM 0.23.0 installs torch==2.11.0
+# which has an incompatible ABI -- those packages all crash.  Starting from a plain
+# CUDA devel image avoids every one of those conflicts.
+#
+# CUDA 12.8 is mandatory for RTX 5090 Blackwell sm_120 MMQ kernel stability.
+
+FROM nvcr.io/nvidia/cuda:12.8.0-devel-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+ENV PATH=/usr/local/cuda-12.8/bin:${PATH}
+ENV LD_LIBRARY_PATH=/usr/local/cuda-12.8/lib64:${LD_LIBRARY_PATH}
+
+ENV ANONYMIZED_TELEMETRY=False
+ENV TOKENIZERS_PARALLELISM=false
+ENV HF_DATASETS_OFFLINE=1
+ENV TRANSFORMERS_OFFLINE=1
+ENV HF_HUB_OFFLINE=1
+
+# System deps + Python 3.12 via deadsnakes PPA
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    software-properties-common \
+    curl \
+    git \
+    libgomp1 \
+    && add-apt-repository ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y --no-install-recommends \
+    python3.12 \
+    python3.12-dev \
+    && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 \
+    && update-alternatives --install /usr/bin/python  python  /usr/bin/python3.12 1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Bootstrap pip for Python 3.12
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12 \
+    && pip install --upgrade pip setuptools wheel
+
+# Verify CUDA toolkit (build-time sanity check, no GPU required)
+RUN nvcc --version && echo "CUDA 12.8 toolkit confirmed"
+
+# Install vLLM (pulls torch==2.11.0+cu128 and all deps automatically)
+# Split from flashinfer to get independent Docker cache layers
+RUN pip install --no-cache-dir --timeout 600 \
+    "vllm>=0.9.0" \
+    --extra-index-url https://download.pytorch.org/whl/cu128
+
+RUN pip install --no-cache-dir --timeout 600 \
+    "flashinfer-python>=0.2.0" \
+    --extra-index-url https://download.pytorch.org/whl/cu128
+
+# Patch flashinfer check_cuda_arch for RTX 5090 Blackwell (sm_120).
+# The JIT function uses torch.cuda.get_arch_list() which may not include sm_120
+# in torch 2.11.0+cu128 precompiled binaries, causing it to wrongly reject the
+# GPU even though sm_120 >= sm75.  The patch uses get_device_capability() instead.
+COPY scripts/patch_flashinfer.py /tmp/patch_flashinfer.py
+RUN python3 /tmp/patch_flashinfer.py
+
+# vLLM 0.23+ installs nvidia-cuda-runtime 13.x as a pip wheel (for humming-kernels[cu13]).
+# That puts libcudart.so.13 inside site-packages/nvidia/cuda_runtime/lib but the dynamic
+# linker does not know the path.  Register every pip-installed nvidia lib dir so
+# vLLM C extensions can open libcudart.so.13 at container start.
+RUN find /usr/local/lib/python3.12/dist-packages/nvidia -maxdepth 2 -name 'lib' -type d 2>/dev/null \
+    > /etc/ld.so.conf.d/nvidia-pip.conf || true \
+    && ldconfig
+
+# Build-time smoke test (no GPU required)
+RUN python3 -c "import torch; print(f'PyTorch {torch.__version__}, CUDA build: {torch.version.cuda}')"
+
+WORKDIR /app
+
+EXPOSE 11436
+
+RUN echo '#!/bin/bash\ncurl -sf http://localhost:11436/health' > /usr/local/bin/healthcheck.sh \
+    && chmod +x /usr/local/bin/healthcheck.sh
