@@ -31,6 +31,14 @@ _SYSTEM_PROMPT = (
     '- Use the same verbs as in the source passages. Do not substitute\n'
     '  stronger authority verbs (e.g. do not write "approves" if the\n'
     '  source says "reviews", or "manages" if the source says "discusses").\n'
+    '\n'
+    'VERB EXAMPLE (follow this pattern exactly):\n'
+    '  Source: "The committee advises the Board on sustainability strategy"\n'
+    '  CORRECT bullet: "Advises Board on sustainability strategy [Page N]"\n'
+    '  WRONG bullet:   "Approves sustainability strategy [Page N]"\n'
+    '  Source: "The committee reviews KPIs and discusses root causes"\n'
+    '  CORRECT bullet: "Reviews KPIs and discusses root causes [Page N]"\n'
+    '  WRONG bullet:   "Manages KPI tracking and oversees root cause analysis [Page N]"\n'
 )
 
 

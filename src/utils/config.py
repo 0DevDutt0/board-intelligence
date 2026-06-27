@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     bm25_b: float = Field(default=0.5)
     use_hyde: bool = Field(default=True)
     hyde_min_query_words: int = Field(default=6)
+    hyde_concat_query: bool = Field(default=True)
 
     # Chunking
     chunk_target_tokens: int = Field(default=500)
