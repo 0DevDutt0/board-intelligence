@@ -692,6 +692,11 @@ class HallucinationGuard:
         return warnings
 
     async def verify(self, response_text: str, chunks: list) -> list:
+        '''
+        Returns a list of warning dicts: {message: str, snippet: str}.
+        snippet is the first 80 chars of the sentence that triggered the warning
+        (empty string for bulk citation warnings).
+        '''
         loop = asyncio.get_event_loop()
         sentences = _split_sentences(response_text)
         warnings = []
@@ -700,16 +705,20 @@ class HallucinationGuard:
             verified, score, extra_warns = await loop.run_in_executor(
                 None, self._verify_sentence, sentence, chunks
             )
+            snippet = sentence[:80]
             if not verified:
-                warnings.append(
-                    f'Low confidence ({score:.2f}): "{sentence[:80]}..."'
-                )
-            warnings.extend(extra_warns)
+                warnings.append({
+                    'message': f'Low confidence ({score:.2f}): "{sentence[:80]}..."',
+                    'snippet': snippet,
+                })
+            for w in extra_warns:
+                warnings.append({'message': w, 'snippet': snippet})
 
         # Bulk citation check -- operates at bullet level, not sentence level.
         citation_warnings = await loop.run_in_executor(
             None, self._check_citation_mismatches, response_text, chunks
         )
-        warnings.extend(citation_warnings)
+        for w in citation_warnings:
+            warnings.append({'message': w, 'snippet': ''})
 
         return warnings

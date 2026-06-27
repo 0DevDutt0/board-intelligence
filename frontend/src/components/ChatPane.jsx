@@ -154,7 +154,7 @@ function splitInlineHeadings(text) {
 
 // ---- Block markdown renderer ----
 
-function MessageBody({ text }) {
+function MessageBody({ text, flaggedVerbs }) {
   const isThinkingOnly = text.includes('<think>') && !text.includes('</think>')
   const clean = splitInlineHeadings(stripThink(text))
 
@@ -213,8 +213,20 @@ function MessageBody({ text }) {
     }
 
     if (/^[-*] /.test(line)) {
+      const bulletText = line.slice(2).toLowerCase()
+      const isWarned = flaggedVerbs && [...flaggedVerbs].some(v => {
+        const re = new RegExp(`\\b${v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i')
+        return re.test(bulletText)
+      })
       elements.push(
-        <div key={i} className="flex gap-2 ml-1 my-0.5">
+        <div
+          key={i}
+          className={[
+            'flex gap-2 ml-1 my-0.5 rounded-sm',
+            isWarned ? 'border-l-2 border-status-warning/60 pl-1.5 -ml-0.5 bg-status-warning/5' : '',
+          ].join(' ')}
+          title={isWarned ? 'This bullet contains a flagged verb -- see warnings below' : undefined}
+        >
           <span className="text-ink-disabled select-none shrink-0 mt-px" style={{ fontSize: '10px', lineHeight: '20px' }}>
             -
           </span>
@@ -358,11 +370,14 @@ function WarningsDetail({ warnings }) {
       </button>
       {open && (
         <ul className="mt-1.5 space-y-1">
-          {warnings.map((w, i) => (
-            <li key={i} className="text-xs text-ink-tertiary pl-2 border-l border-status-warning/30">
-              {w}
-            </li>
-          ))}
+          {warnings.map((w, i) => {
+            const msg = typeof w === 'string' ? w : w.message
+            return (
+              <li key={i} className="text-xs text-ink-tertiary pl-2 border-l border-status-warning/30">
+                {msg}
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>
@@ -603,7 +618,14 @@ export default function ChatPane({ apiBase, sessionId, onCitations, onDone }) {
                 <p className="leading-relaxed whitespace-pre-wrap">{msg.text}</p>
               ) : (
                 <>
-                  <MessageBody text={msg.text} />
+                  <MessageBody
+                    text={msg.text}
+                    flaggedVerbs={new Set(
+                      (msg.eval_warnings || [])
+                        .map(w => (typeof w === 'string' ? w : w.message).match(/"([^"]+)"/)?.[1])
+                        .filter(Boolean)
+                    )}
+                  />
 
                   {msg.streaming && (
                     <span className="inline-flex items-center gap-0.5 ml-1 align-middle">
