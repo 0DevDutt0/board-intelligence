@@ -52,12 +52,24 @@ def build_prompt(
     question: str,
     chunks: list,
     conversation_history: list = None,
+    valid_pages: list = None,
 ) -> list:
     context_parts = [_format_chunk(i + 1, c) for i, c in enumerate(chunks)]
     context = '\n\n'.join(context_parts)
 
+    citation_constraint = ''
+    if valid_pages:
+        page_list = ', '.join(str(p) for p in sorted(valid_pages))
+        citation_constraint = (
+            f'\nCITATION CONSTRAINT: You MUST only use these exact page numbers in '
+            f'[Page N] citations: {page_list}. '
+            f'Do not cite any other page numbers. '
+            f'Every bullet must cite one of these pages.\n'
+        )
+
     system_content = (
         _SYSTEM_PROMPT
+        + citation_constraint
         + '\nContext passages:\n'
         + context
     )

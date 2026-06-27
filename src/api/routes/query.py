@@ -93,7 +93,11 @@ async def _stream_query(
         top_chunks = all_chunks[:settings.reranker_top_k * 2]
 
     conv_history = state.get('conversation_history', [])
-    messages = build_prompt(question, top_chunks, conv_history)
+    retrieved_pages = sorted({
+        c['page_number'] for c in top_chunks
+        if c.get('page_number') is not None
+    })
+    messages = build_prompt(question, top_chunks, conv_history, valid_pages=retrieved_pages)
 
     # Estimate input token count (approx 4 chars per token) and cap output tokens
     # so that input + output never exceeds the model's 8192-token context window.
@@ -129,7 +133,7 @@ async def _stream_query(
 
     response_text = ''.join(full_response)
     answer_text = _strip_think_blocks(response_text)
-    validated_text = validate_citations(answer_text, valid_pages_set)
+    validated_text = validate_citations(answer_text, set(retrieved_pages))
 
     citation_chunks = [
         {
