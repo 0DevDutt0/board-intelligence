@@ -26,7 +26,6 @@ _EXEC_VERB_RE = re.compile(
     r'|directs?|directed|directing'
     r'|establishes?|established|establishing'
     r'|executes?|executed|executing'
-    r'|updates?|updated|updating'
     r'|maintains?|maintained|maintaining'
     r'|promotes?|promoted|promoting'
     r'|leads?|led|leading'
@@ -84,10 +83,6 @@ _EXEC_VERB_PATTERNS = {
     'executes':     _verb_pattern(r'\bexecute[sd]?\b|\bexecuting\b'),
     'executed':     _verb_pattern(r'\bexecute[sd]?\b|\bexecuting\b'),
     'executing':    _verb_pattern(r'\bexecute[sd]?\b|\bexecuting\b'),
-    'update':       _verb_pattern(r'\bupdate[sd]?\b|\bupdating\b'),
-    'updates':      _verb_pattern(r'\bupdate[sd]?\b|\bupdating\b'),
-    'updated':      _verb_pattern(r'\bupdate[sd]?\b|\bupdating\b'),
-    'updating':     _verb_pattern(r'\bupdate[sd]?\b|\bupdating\b'),
     'maintain':     _verb_pattern(r'\bmaintain[s]?\b|\bmaintained\b|\bmaintaining\b'),
     'maintains':    _verb_pattern(r'\bmaintain[s]?\b|\bmaintained\b|\bmaintaining\b'),
     'maintained':   _verb_pattern(r'\bmaintain[s]?\b|\bmaintained\b|\bmaintaining\b'),
@@ -128,6 +123,7 @@ _SCOPE_VERB_RE = re.compile(
     r'|facilitates?|facilitated|facilitating'
     r'|drives?|drove|driving'
     r'|covers?|covered|covering'
+    r'|updates?|updated|updating'
     r')\b',
     re.IGNORECASE,
 )
@@ -157,6 +153,10 @@ _SCOPE_VERB_PATTERNS = {
     'covers':       _verb_pattern(r'\bcovers?\b|\bcovered\b|\bcovering\b'),
     'covered':      _verb_pattern(r'\bcovers?\b|\bcovered\b|\bcovering\b'),
     'covering':     _verb_pattern(r'\bcovers?\b|\bcovered\b|\bcovering\b'),
+    'update':       _verb_pattern(r'\bupdate[sd]?\b|\bupdating\b'),
+    'updates':      _verb_pattern(r'\bupdate[sd]?\b|\bupdating\b'),
+    'updated':      _verb_pattern(r'\bupdate[sd]?\b|\bupdating\b'),
+    'updating':     _verb_pattern(r'\bupdate[sd]?\b|\bupdating\b'),
 }
 
 # Advisory verbs -- confirms source uses weaker language than response.
@@ -241,9 +241,23 @@ _BOARD_RESOLUTION_RE = re.compile(
 )
 
 
+_HEADING_RE = re.compile(r'^\*{1,2}[^*\n]+\*{1,2}:?\s*$')
+
+
 def _split_sentences(text: str) -> list:
-    parts = _SENTENCE_RE.split(text.strip())
-    return [p.strip() for p in parts if p.strip()]
+    # Split on sentence-ending punctuation and on bullet/numbered list markers
+    # so each bullet gets its own NLI score rather than the whole formatted block.
+    raw = re.split(r'(?<=[.!?])\s+|\n(?=\s*[-*•]\s)', text.strip())
+    results = []
+    for p in raw:
+        p = p.strip()
+        if not p:
+            continue
+        # Skip markdown headings -- they are structural labels, not factual claims.
+        if _HEADING_RE.match(p):
+            continue
+        results.append(p)
+    return results
 
 
 def _normalize_digits(s: str) -> str:

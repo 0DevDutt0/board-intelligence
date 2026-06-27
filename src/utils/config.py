@@ -34,7 +34,9 @@ class Settings(BaseSettings):
     dense_top_k: int = Field(default=50)
     sparse_top_k: int = Field(default=50)
     rrf_k: int = Field(default=60)
-    reranker_top_k: int = Field(default=8)
+    reranker_top_k: int = Field(default=12)
+    bm25_k1: float = Field(default=1.2)
+    bm25_b: float = Field(default=0.5)
     use_hyde: bool = Field(default=True)
     hyde_min_query_words: int = Field(default=6)
 

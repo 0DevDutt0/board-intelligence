@@ -18,8 +18,11 @@ class BM25Index:
         from rank_bm25 import BM25Okapi
         self._chunks = chunks
         tokenized = [_tokenize(chunk['text']) for chunk in chunks]
-        self._index = BM25Okapi(tokenized)
-        logger.info(f'BM25 index built with {len(chunks)} documents')
+        self._index = BM25Okapi(tokenized, k1=settings.bm25_k1, b=settings.bm25_b)
+        logger.info(
+            f'BM25 index built: {len(chunks)} docs, '
+            f'k1={settings.bm25_k1}, b={settings.bm25_b}'
+        )
 
     def search(self, query: str, top_k: int = None) -> list:
         if self._index is None:

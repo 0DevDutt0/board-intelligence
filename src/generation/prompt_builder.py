@@ -28,6 +28,9 @@ _SYSTEM_PROMPT = (
     '- If context lacks the answer, respond exactly:\n'
     '  "I cannot find sufficient information in the document."\n'
     '- Never speculate. Never add information not in the context.\n'
+    '- Use the same verbs as in the source passages. Do not substitute\n'
+    '  stronger authority verbs (e.g. do not write "approves" if the\n'
+    '  source says "reviews", or "manages" if the source says "discusses").\n'
 )
 
 
