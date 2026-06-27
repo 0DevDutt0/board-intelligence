@@ -147,6 +147,11 @@ async def _stream_query(
     ]
     yield _sse_event('citations', {'chunks': citation_chunks})
 
+    # Send the validated text so the frontend replaces streamed tokens with
+    # the citation-checked version. Any [Page N] not in retrieved evidence
+    # is already replaced with [unverifiable citation] at this point.
+    yield _sse_event('corrected', {'text': validated_text})
+
     guard_task = asyncio.create_task(guard.verify(validated_text, top_chunks))
 
     t_elapsed = time.perf_counter() - t_start

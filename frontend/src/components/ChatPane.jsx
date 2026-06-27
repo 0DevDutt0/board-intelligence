@@ -84,8 +84,21 @@ function CitationBadge({ page }) {
 
 // ---- Inline renderer ----
 
+function UnverifiedBadge({ keyVal }) {
+  return (
+    <span
+      key={keyVal}
+      className="inline-flex items-center px-1.5 py-0.5 rounded border border-status-warning/30 bg-status-warning/10 text-status-warning font-medium mx-0.5 cursor-default"
+      title="Citation could not be verified against retrieved evidence"
+      style={{ fontSize: '10px', lineHeight: 1 }}
+    >
+      unverified
+    </span>
+  )
+}
+
 function renderInline(text, keyPrefix) {
-  const regex = /(\*\*[^*\n]+\*\*|\*[^*\n]+\*|\[Page \d+\])/g
+  const regex = /(\*\*[^*\n]+\*\*|\*[^*\n]+\*|\[Page \d+\]|\[unverifiable citation\])/g
   const parts = []
   let last = 0
   let idx = 0
@@ -106,6 +119,8 @@ function renderInline(text, keyPrefix) {
           {m[0].slice(1, -1)}
         </em>
       )
+    } else if (m[0] === '[unverifiable citation]') {
+      parts.push(<UnverifiedBadge key={`${keyPrefix}-u${idx++}`} />)
     } else {
       const pageNum = m[0].match(/\[Page (\d+)\]/)[1]
       parts.push(<CitationBadge key={`${keyPrefix}-c${idx++}`} page={pageNum} />)
@@ -429,6 +444,19 @@ export default function ChatPane({ apiBase, sessionId, onCitations, onDone }) {
 
               else if (eventType === 'citations' && obj.chunks) {
                 onCitations(obj.chunks)
+              }
+
+              else if (eventType === 'corrected' && obj.text !== undefined) {
+                // Replace streamed tokens with the citation-validated version.
+                // Any fabricated [Page N] tags are already [unverifiable citation].
+                setMessages(prev => {
+                  const msgs = [...prev]
+                  const last = msgs[msgs.length - 1]
+                  if (last?.role === 'assistant') {
+                    msgs[msgs.length - 1] = { ...last, text: obj.text }
+                  }
+                  return msgs
+                })
               }
 
               else if (eventType === 'done') {
