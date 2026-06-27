@@ -1,6 +1,7 @@
 # src/indexing/bm25_index.py
 from src.utils.config import settings
 from src.utils.logger import get_logger
+from src.utils.acronym_expander import expand_query
 
 logger = get_logger(__name__)
 
@@ -28,7 +29,10 @@ class BM25Index:
         if self._index is None:
             return []
         k = top_k or settings.sparse_top_k
-        tokens = _tokenize(query)
+        expanded = expand_query(query)
+        if expanded != query:
+            logger.info(f'BM25 acronym expansion: {expanded[len(query):].strip()!r}')
+        tokens = _tokenize(expanded)
         scores = self._index.get_scores(tokens)
         import numpy as np
         ranked_indices = np.argsort(scores)[::-1][:k]
