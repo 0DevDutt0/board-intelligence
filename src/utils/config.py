@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     sparse_top_k: int = Field(default=50)
     rrf_k: int = Field(default=60)
     reranker_top_k: int = Field(default=12)
+    reranker_min_score: float = Field(default=0.10)
     bm25_k1: float = Field(default=1.2)
     bm25_b: float = Field(default=0.5)
     use_hyde: bool = Field(default=True)

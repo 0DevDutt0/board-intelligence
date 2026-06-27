@@ -86,6 +86,24 @@ async def _stream_query(
         logger.error(f'Reranking failed: {exc}')
         top_chunks = fused[:settings.reranker_top_k]
 
+    # Drop chunks whose reranker score is below the minimum threshold.
+    # Low-scoring chunks are tangentially related noise that wastes context
+    # tokens without improving answer quality.
+    if settings.reranker_min_score > 0 and top_chunks:
+        filtered = [
+            c for c in top_chunks
+            if c.get('reranker_score', 1.0) >= settings.reranker_min_score
+        ]
+        # Always keep at least 3 chunks so short documents still get context.
+        if len(filtered) >= 3:
+            dropped = len(top_chunks) - len(filtered)
+            if dropped:
+                logger.info(
+                    f'Reranker score filter: dropped {dropped} chunk(s) '
+                    f'below {settings.reranker_min_score} threshold'
+                )
+            top_chunks = filtered
+
     # Fallback: if retrieval returned nothing, use all indexed chunks so the
     # model always has context (works well for single-page or small documents).
     if not top_chunks and all_chunks:
