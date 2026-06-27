@@ -551,6 +551,19 @@ def _check_verb_inflation(sentence: str, chunks: list) -> list:
             continue
 
         # Verb in source but NOT clearly attributed to the committee.
+        # Before flagging, check if the response sentence itself already names
+        # a non-committee body (Board, management, Executive Committee) as the
+        # grammatical subject before the verb.  If so, the attribution in the
+        # response is correct -- "Board approves X" is not inflation.
+        verb_match = pattern.search(clean)
+        pre_verb = clean[:verb_match.start()] if verb_match else ''
+        response_names_other_body = (
+            bool(_OTHER_BODY_RE.search(pre_verb))
+            and not bool(_COMMITTEE_RE.search(pre_verb))
+        )
+        if response_names_other_body:
+            continue
+
         other_body = _verb_in_other_body_chunks(pattern, chunks)
         if other_body:
             # Case 3: verb explicitly belongs to another body.
