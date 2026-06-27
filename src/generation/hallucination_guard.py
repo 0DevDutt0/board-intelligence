@@ -8,9 +8,29 @@ logger = get_logger(__name__)
 
 _SENTENCE_RE = re.compile(r'(?<=[.!?])\s+')
 
-# Matches numbers including thousands separators (comma, period, space between digits)
+# Matches digit-form numbers including thousands separators.
 # Examples: 12,249,093  12 249 093  12.249.093  1.5  0.80  2025
 _NUMBER_RE = re.compile(r'\b\d+(?:[,.\s]\d{3})*(?:[.,]\d+)?\b')
+
+# Word-form number map.  Only covers values likely to appear in board documents.
+# Each word maps to its canonical digit string for source-lookup.
+_WORD_NUMBERS = {
+    'zero': '0', 'one': '1', 'two': '2', 'three': '3', 'four': '4',
+    'five': '5', 'six': '6', 'seven': '7', 'eight': '8', 'nine': '9',
+    'ten': '10', 'eleven': '11', 'twelve': '12', 'thirteen': '13',
+    'fourteen': '14', 'fifteen': '15', 'sixteen': '16', 'seventeen': '17',
+    'eighteen': '18', 'nineteen': '19', 'twenty': '20', 'thirty': '30',
+    'forty': '40', 'fifty': '50', 'sixty': '60', 'seventy': '70',
+    'eighty': '80', 'ninety': '90', 'hundred': '100', 'thousand': '1000',
+    'million': '1000000', 'billion': '1000000000',
+    # Ordinals
+    'first': '1', 'second': '2', 'third': '3', 'fourth': '4', 'fifth': '5',
+    'sixth': '6', 'seventh': '7', 'eighth': '8', 'ninth': '9', 'tenth': '10',
+}
+_WORD_NUMBER_RE = re.compile(
+    r'\b(' + '|'.join(re.escape(w) for w in _WORD_NUMBERS) + r')\b',
+    re.IGNORECASE,
+)
 
 # Executive/authority verbs that change legal meaning when falsely attributed to
 # a committee. Governance documents distinguish advisory verbs (reviews, discusses)
@@ -590,10 +610,10 @@ class HallucinationGuard:
 
         numeric_warnings = []
         if settings.numeric_verification:
-            numbers = _extract_numbers(sentence)
             all_chunk_text = ' '.join(c['text'] for c in chunks)
 
-            for num in numbers:
+            # Digit-form numbers (>= 4 digits to avoid noise from years/short refs)
+            for num in _extract_numbers(sentence):
                 digits_only = re.sub(r'\D', '', num)
                 if len(digits_only) < 4:
                     continue
@@ -603,6 +623,24 @@ class HallucinationGuard:
                     numeric_warnings.append(
                         f'"{num}" -- this figure does not appear verbatim in the retrieved passages'
                     )
+
+            # Word-form numbers: check that each word number in the response
+            # has a matching digit or word form in the source chunks.
+            for m in _WORD_NUMBER_RE.finditer(sentence):
+                word = m.group(0).lower()
+                digit = _WORD_NUMBERS[word]
+                # Skip very common low-value words that appear in any context
+                if digit in ('1', '2', '3'):
+                    continue
+                # Accept if the digit form appears in source
+                if digit in all_chunk_text:
+                    continue
+                # Accept if the word form itself appears in source
+                if re.search(r'\b' + re.escape(word) + r'\b', all_chunk_text, re.IGNORECASE):
+                    continue
+                numeric_warnings.append(
+                    f'"{word}" -- this quantity does not appear (as word or digit) in the retrieved passages'
+                )
 
         verb_warnings = _check_verb_inflation(sentence, chunks)
         scope_warnings = _check_scope_broadening(sentence, chunks)

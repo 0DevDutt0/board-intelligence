@@ -49,10 +49,11 @@ function FileIcon() {
   )
 }
 
-// Score bar (reranker relevance)
+// Score bar (reranker relevance) with human-readable quality label
 function ScoreBar({ score }) {
-  const pct = Math.max(0, Math.min(1, score)) * 100
-  const color = pct >= 60 ? '#22C55E' : pct >= 35 ? '#F59E0B' : '#64748B'
+  const pct   = Math.max(0, Math.min(1, score)) * 100
+  const color = pct >= 50 ? '#22C55E' : pct >= 25 ? '#F59E0B' : '#64748B'
+  const label = pct >= 50 ? 'Strong match' : pct >= 25 ? 'Good match' : 'Weak match'
 
   return (
     <div className="flex items-center gap-1.5">
@@ -62,8 +63,8 @@ function ScoreBar({ score }) {
           style={{ width: `${pct}%`, backgroundColor: color }}
         />
       </div>
-      <span className="text-xs text-ink-disabled font-mono" style={{ fontSize: '10px' }}>
-        {score.toFixed(2)}
+      <span className="text-xs font-medium" style={{ color, fontSize: '10px' }}>
+        {label}
       </span>
     </div>
   )

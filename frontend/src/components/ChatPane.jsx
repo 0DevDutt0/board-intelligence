@@ -51,6 +51,16 @@ function WarnIcon() {
   )
 }
 
+function AlertTriangleIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5">
+      <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+      <line x1="12" y1="9" x2="12" y2="13" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  )
+}
+
 function SparkleIcon() {
   return (
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -609,13 +619,22 @@ export default function ChatPane({ apiBase, sessionId, onCitations, onDone }) {
                 'group relative max-w-xl rounded-2xl px-4 py-3 text-sm',
                 msg.role === 'user'
                   ? 'bg-accent text-white rounded-tr-sm'
-                  : msg.isError
-                  ? 'bg-status-error/10 border border-status-error/25 text-status-error rounded-tl-sm'
                   : 'bg-surface-card border border-border-subtle text-ink-secondary rounded-tl-sm shadow-card',
               ].join(' ')}
             >
               {msg.role === 'user' ? (
                 <p className="leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+              ) : msg.isError ? (
+                <div className="flex items-start gap-2.5 text-status-warning">
+                  <AlertTriangleIcon />
+                  <div>
+                    <p className="font-semibold text-sm mb-0.5">Generation failed</p>
+                    <p className="text-xs opacity-80 leading-relaxed">{msg.text}</p>
+                    <p className="text-xs opacity-50 mt-2">
+                      Try rephrasing your question. If the error persists, reload the page.
+                    </p>
+                  </div>
+                </div>
               ) : (
                 <>
                   <MessageBody

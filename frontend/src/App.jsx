@@ -1,10 +1,48 @@
 // frontend/src/App.jsx
-import { useState } from 'react'
+import React, { useState } from 'react'
 import UploadDropzone from './components/UploadDropzone'
 import ChatPane from './components/ChatPane'
 import SourcePanel from './components/SourcePanel'
 import StatusBar from './components/StatusBar'
 import Logo from './components/Logo'
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false, message: '' }
+  }
+  static getDerivedStateFromError(err) {
+    return { hasError: true, message: err?.message || 'Unknown error' }
+  }
+  componentDidCatch(err, info) {
+    console.error('ErrorBoundary caught:', err, info)
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full gap-4 px-8 text-center">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+          <div>
+            <p className="text-sm font-semibold text-ink-primary mb-1">Something went wrong</p>
+            <p className="text-xs text-ink-tertiary max-w-xs leading-relaxed">{this.state.message}</p>
+          </div>
+          <button
+            onClick={() => this.setState({ hasError: false, message: '' })}
+            className="text-xs px-3 py-1.5 rounded-lg border border-border text-ink-secondary
+                       hover:bg-surface-elevated hover:text-ink-primary transition-colors cursor-pointer"
+          >
+            Try again
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
 
@@ -144,12 +182,14 @@ export default function App() {
       <div className="flex flex-1 overflow-hidden">
         {/* Chat area */}
         <div className="flex-1 flex flex-col min-w-0 bg-surface-base">
-          <ChatPane
-            apiBase={API_BASE}
-            sessionId={sessionId}
-            onCitations={handleCitations}
-            onDone={handleDone}
-          />
+          <ErrorBoundary>
+            <ChatPane
+              apiBase={API_BASE}
+              sessionId={sessionId}
+              onCitations={handleCitations}
+              onDone={handleDone}
+            />
+          </ErrorBoundary>
         </div>
 
         {/* Source panel */}
