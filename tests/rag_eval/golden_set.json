@@ -1,74 +1,125 @@
 [
   {
     "id": "q001",
-    "question": "What was the total revenue for the fiscal year?",
-    "expected_answer_contains": ["revenue", "fiscal year"],
-    "expected_cited": true,
-    "category": "financial"
-  },
-  {
-    "id": "q002",
-    "question": "What capital expenditure was approved by the board?",
-    "expected_answer_contains": ["capital expenditure", "approved"],
-    "expected_cited": true,
-    "category": "financial"
-  },
-  {
-    "id": "q003",
-    "question": "Who are the board members present at the meeting?",
-    "expected_answer_contains": [],
-    "expected_cited": true,
+    "question": "What are the responsibilities of the Health, Safety and Sustainability Committee?",
+    "expected_keywords": ["health", "safety", "sustainability", "board", "advises"],
+    "expected_abstain": false,
+    "expected_pages": [9, 28, 33],
     "category": "governance"
   },
   {
+    "id": "q002",
+    "question": "How many ordinary meetings did the HSSC hold in 2025?",
+    "expected_keywords": ["four"],
+    "expected_abstain": false,
+    "expected_pages": [9],
+    "category": "factual_numeric"
+  },
+  {
+    "id": "q003",
+    "question": "Who are the members of the Health, Safety and Sustainability Committee?",
+    "expected_keywords": ["Philippe Block", "Leanne Geale", "Catrin Hinkel"],
+    "expected_abstain": false,
+    "expected_pages": [9],
+    "category": "factual_membership"
+  },
+  {
     "id": "q004",
-    "question": "What are the key risks identified in the document?",
-    "expected_answer_contains": ["risk"],
-    "expected_cited": true,
-    "category": "risk"
+    "question": "What percentage of shareholder approval did the Climate Report receive?",
+    "expected_keywords": ["89.75"],
+    "expected_abstain": false,
+    "expected_pages": [9],
+    "category": "factual_numeric"
   },
   {
     "id": "q005",
-    "question": "What strategic initiatives were discussed?",
-    "expected_answer_contains": [],
-    "expected_cited": true,
-    "category": "strategy"
+    "question": "What is Holcim's zero harm commitment?",
+    "expected_keywords": ["zero harm"],
+    "expected_abstain": false,
+    "expected_pages": [33],
+    "category": "governance"
   },
   {
     "id": "q006",
-    "question": "What is the dividend policy mentioned in the document?",
-    "expected_answer_contains": [],
-    "expected_cited": true,
-    "category": "financial"
+    "question": "Where is the HSSC charter available?",
+    "expected_keywords": ["holcim.com"],
+    "expected_abstain": false,
+    "expected_pages": [9],
+    "category": "factual"
   },
   {
     "id": "q007",
-    "question": "What is the CEO's compensation package?",
-    "expected_answer_contains": [],
-    "expected_cited": true,
+    "question": "What topics were discussed at HSSC meetings in 2025?",
+    "expected_keywords": ["KPI", "climate", "emissions", "fatalities"],
+    "expected_abstain": false,
+    "expected_pages": [9],
     "category": "governance"
   },
   {
     "id": "q008",
-    "question": "What regulatory compliance issues were raised?",
-    "expected_answer_contains": [],
-    "expected_cited": true,
-    "category": "compliance"
+    "question": "Which body oversees Holcim's risk management and internal control processes?",
+    "expected_keywords": ["Board of Directors", "Audit Committee"],
+    "expected_abstain": false,
+    "expected_pages": [28],
+    "category": "governance"
   },
   {
     "id": "q009",
-    "question": "What is the weather forecast for next Tuesday?",
-    "expected_answer_contains": ["cannot find", "insufficient"],
-    "expected_cited": false,
-    "category": "adversarial_unanswerable",
-    "notes": "This should trigger abstention - weather is not in board docs"
+    "question": "What is the average duration of HSSC meetings?",
+    "expected_keywords": ["41 minutes"],
+    "expected_abstain": false,
+    "expected_pages": [9],
+    "category": "factual_numeric"
   },
   {
     "id": "q010",
-    "question": "What was the company revenue in 1850?",
-    "expected_answer_contains": ["cannot find", "insufficient"],
-    "expected_cited": false,
+    "question": "What adverse event risks does the HSSC monitor?",
+    "expected_keywords": ["geopolitical", "pandemic", "natural disaster"],
+    "expected_abstain": false,
+    "expected_pages": [9],
+    "category": "risk"
+  },
+  {
+    "id": "q011",
+    "question": "What Security and Resilience program topics were covered by the HSSC?",
+    "expected_keywords": ["Security", "Resilience"],
+    "expected_abstain": false,
+    "expected_pages": [9],
+    "category": "governance"
+  },
+  {
+    "id": "q012",
+    "question": "How does the Board of Directors relate to the HSSC on sustainability?",
+    "expected_keywords": ["HSSC", "Board", "advises"],
+    "expected_abstain": false,
+    "expected_pages": [28],
+    "category": "governance"
+  },
+  {
+    "id": "q013",
+    "question": "What was Holcim's stock price on January 1st 2025?",
+    "expected_keywords": ["cannot find", "sufficient"],
+    "expected_abstain": true,
+    "expected_pages": [],
     "category": "adversarial_unanswerable",
-    "notes": "Should trigger abstention - 1850 predates any modern company"
+    "notes": "Stock price not in governance report"
+  },
+  {
+    "id": "q014",
+    "question": "What is the weather forecast for Zurich next week?",
+    "expected_keywords": ["cannot find", "sufficient"],
+    "expected_abstain": true,
+    "expected_pages": [],
+    "category": "adversarial_unanswerable",
+    "notes": "Weather not in any board document"
+  },
+  {
+    "id": "q015",
+    "question": "What was the company revenue in 1850?",
+    "expected_keywords": ["cannot find", "sufficient"],
+    "expected_abstain": true,
+    "expected_pages": [],
+    "category": "adversarial_unanswerable",
+    "notes": "1850 predates any modern company record in the document"
   }
 ]
