@@ -582,6 +582,12 @@ def _check_verb_inflation(sentence: str, chunks: list, committee_type: str = 'un
     exec_matches = _EXEC_VERB_RE.findall(clean)
     if not exec_matches:
         return []
+    # Verb inflation is a committee-specific check. If the sentence names no
+    # committee at all (e.g. about GIC, GDA, or the Board as a body), skip it.
+    # The check exists solely to catch advisory committees using executive verbs
+    # above their authority -- it should not fire on non-committee sentences.
+    if not _COMMITTEE_RE.search(clean) and not _OVERSIGHT_COMMITTEE_RE.search(clean):
+        return []
 
     all_chunk_text = ' '.join(c.get('text', '') for c in chunks)
     warnings = []
@@ -674,6 +680,11 @@ class HallucinationGuard:
             return 0.0
 
     def _verify_sentence(self, sentence: str, chunks: list, committee_type: str = 'unknown') -> tuple:
+        # If the citation injector already flagged this sentence as unverifiable,
+        # skip NLI -- a second warning is redundant noise on top of the existing flag.
+        if '[unverifiable citation]' in sentence:
+            return True, 1.0, []
+
         max_entailment = 0.0
         for chunk in chunks:
             score = self._nli_score(sentence, chunk['text'])
