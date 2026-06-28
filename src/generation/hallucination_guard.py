@@ -195,11 +195,29 @@ _ADVISORY_VERB_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Identifies the committee being analyzed in source text.
+# Advisory committees: advise/review/discuss but do not hold executive decision authority.
+# Verb inflation checks are meaningful ONLY for these committee types.
 _COMMITTEE_RE = re.compile(
     r'\b(HSSC'
     r'|Health,?\s+Safety\s+(?:&|and)\s+Sustainability\s+Committee'
+    r'|NCG'
+    r'|Nomination\s+(?:Compensation\s+(?:&|and)\s+)?(?:Governance\s+)?Committee'
+    r'|Remuneration\s+Committee'
+    r'|People\s+Committee'
+    r'|Sustainability\s+Committee'
     r'|the\s+Committee'
+    r')\b',
+    re.IGNORECASE,
+)
+
+# Oversight committees: board subcommittees with legitimate executive oversight authority.
+# Verbs like "oversees", "evaluates", "approves" are accurate for these bodies and must
+# NOT be flagged as verb inflation -- they are not advisory-only.
+_OVERSIGHT_COMMITTEE_RE = re.compile(
+    r'\b(Audit\s+Committee'
+    r'|Risk\s+Committee'
+    r'|Finance\s+(?:and\s+)?(?:Audit\s+)?Committee'
+    r'|Risk\s+and\s+Audit\s+Committee'
     r')\b',
     re.IGNORECASE,
 )
@@ -262,6 +280,39 @@ _BOARD_RESOLUTION_RE = re.compile(
 
 
 _HEADING_RE = re.compile(r'^\*{1,2}[^*\n]+\*{1,2}:?\s*$')
+
+
+def _classify_subject_committee(question: str, chunks: list, response_text: str = '') -> str:
+    '''
+    Return "advisory", "oversight", or "unknown" based on which committee type
+    dominates the question, response headings, and chunk section headings.
+
+    Verb inflation and scope-broadening checks apply only to advisory committees.
+    Oversight committees (Audit Committee, Risk Committee) legitimately use executive
+    verbs and must not be flagged for inflation.
+
+    Chunk text bodies are excluded from counting -- they often mention multiple
+    committees. Only the question and section headings are reliable signals.
+    '''
+    survey = question + ' '
+    # Response headings only (bold markdown lines carry committee-type signals)
+    for line in response_text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith('**') and stripped.endswith('**') or \
+                stripped.startswith('**') and stripped.endswith(':**'):
+            survey += stripped + ' '
+    # Chunk section headings
+    for chunk in chunks:
+        survey += (chunk.get('section_heading') or '') + ' '
+
+    oversight_hits = len(_OVERSIGHT_COMMITTEE_RE.findall(survey))
+    advisory_hits = len(_COMMITTEE_RE.findall(survey))
+
+    if oversight_hits > advisory_hits:
+        return 'oversight'
+    if advisory_hits > oversight_hits:
+        return 'advisory'
+    return 'unknown'
 
 
 def _split_sentences(text: str) -> list:
@@ -471,13 +522,18 @@ def _check_event_attribution(sentence: str, chunks: list) -> list:
     return warnings
 
 
-def _check_scope_broadening(sentence: str, chunks: list) -> list:
+def _check_scope_broadening(sentence: str, chunks: list, committee_type: str = 'unknown') -> list:
     '''
     Low-severity check: detect scope-broadening verbs (addresses, handles,
     coordinates, facilitates, drives, covers) when source uses only advisory
     language for the committee. These are softer than exec verbs but still
     imply more operational responsibility than the source assigns.
+
+    Skipped for oversight committees (Audit Committee, Risk Committee) because
+    operational verbs are accurate for those bodies.
     '''
+    if committee_type == 'oversight':
+        return []
     clean = _CITATION_RE.sub('', sentence)
     scope_matches = _SCOPE_VERB_RE.findall(clean)
     if not scope_matches:
@@ -501,9 +557,12 @@ def _check_scope_broadening(sentence: str, chunks: list) -> list:
     return warnings
 
 
-def _check_verb_inflation(sentence: str, chunks: list) -> list:
+def _check_verb_inflation(sentence: str, chunks: list, committee_type: str = 'unknown') -> list:
     '''
     Four-case governance verb check per sentence:
+    Skipped entirely for oversight committees (Audit Committee, Risk Committee)
+    because executive verbs ("oversees", "evaluates", "approves") are accurate
+    for those bodies and should not be flagged as inflation.
 
     1. Verb not in source at all AND advisory verbs in source
        -> Semantic inflation (advisory language inflated to executive)
@@ -517,6 +576,8 @@ def _check_verb_inflation(sentence: str, chunks: list) -> list:
     5. Verb in source AND clearly attributed to the committee
        -> OK, pass through
     '''
+    if committee_type == 'oversight':
+        return []
     clean = _CITATION_RE.sub('', sentence)
     exec_matches = _EXEC_VERB_RE.findall(clean)
     if not exec_matches:
@@ -612,7 +673,7 @@ class HallucinationGuard:
         except Exception:
             return 0.0
 
-    def _verify_sentence(self, sentence: str, chunks: list) -> tuple:
+    def _verify_sentence(self, sentence: str, chunks: list, committee_type: str = 'unknown') -> tuple:
         max_entailment = 0.0
         for chunk in chunks:
             score = self._nli_score(sentence, chunk['text'])
@@ -655,8 +716,8 @@ class HallucinationGuard:
                     f'"{word}" -- this quantity does not appear (as word or digit) in the retrieved passages'
                 )
 
-        verb_warnings = _check_verb_inflation(sentence, chunks)
-        scope_warnings = _check_scope_broadening(sentence, chunks)
+        verb_warnings = _check_verb_inflation(sentence, chunks, committee_type)
+        scope_warnings = _check_scope_broadening(sentence, chunks, committee_type)
         event_warnings = _check_event_attribution(sentence, chunks)
 
         return verified, max_entailment, numeric_warnings + verb_warnings + scope_warnings + event_warnings
@@ -741,19 +802,29 @@ class HallucinationGuard:
 
         return warnings
 
-    async def verify(self, response_text: str, chunks: list) -> list:
+    async def verify(self, response_text: str, chunks: list, question: str = '') -> list:
         '''
         Returns a list of warning dicts: {message: str, snippet: str}.
         snippet is the first 80 chars of the sentence that triggered the warning
         (empty string for bulk citation warnings).
+
+        question: the original user question, used to classify which committee
+        type is being discussed so verb inflation checks can be suppressed for
+        oversight committees (Audit Committee, Risk Committee).
         '''
+        committee_type = _classify_subject_committee(question, chunks, response_text)
+        if committee_type == 'oversight':
+            logger.info(
+                'HallucinationGuard: oversight committee detected -- '
+                'skipping verb inflation and scope-broadening checks'
+            )
         loop = asyncio.get_event_loop()
         sentences = _split_sentences(response_text)
         warnings = []
 
         for sentence in sentences:
             verified, score, extra_warns = await loop.run_in_executor(
-                None, self._verify_sentence, sentence, chunks
+                None, self._verify_sentence, sentence, chunks, committee_type
             )
             snippet = sentence[:80]
             if not verified:
