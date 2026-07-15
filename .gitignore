@@ -1,14 +1,19 @@
-# /home/claude/board-intelligence/.gitignore
+# .gitignore
 
-# Environment
+# Environment (machine-local config; .env.example is the tracked template)
 .env
 *.env.local
 
-# Models (large binary files - download separately)
+# Claude Code local settings
+.claude/settings.local.json
+
+# Models (large binary files - download with scripts/download_models.py)
 models/
 !models/.gitkeep
 
 # Python
+venv/
+.venv/
 __pycache__/
 *.py[cod]
 *.pyo
@@ -23,8 +28,9 @@ build/
 frontend/node_modules/
 frontend/dist/
 
-# Session temp files
-/tmp/bis-sessions/
+# Confidential documents -- test fixtures and eval outputs must never be committed
+tests/fixtures/*.pdf
+tests/rag_eval/results/
 
 # IDE
 .vscode/
