@@ -99,12 +99,13 @@ class SemanticChunker:
         current_tokens = 0
         idx = chunk_index_start
 
-        def flush(current_sents, overlap_sents):
+        def flush(current_sents, overlap_sents, force=False):
             nonlocal idx
             chunk_text = ' '.join(current_sents)
             token_count = _count_tokens(chunk_text)
-            if token_count < self._min:
-                return overlap_sents
+            if token_count < self._min and not force:
+                # Under the minimum: keep accumulating instead of dropping.
+                return current_sents
             prefix = f'[Page {page_number}, Section: {section_heading}]'
             chunks.append({
                 'text': chunk_text,
@@ -147,8 +148,11 @@ class SemanticChunker:
             current.append(sent)
             current_tokens += sent_tokens
 
+        # Force the final flush: a page shorter than the minimum (or a sub-min
+        # tail) must still be indexed, otherwise its content and page number
+        # disappear from the index entirely.
         if current:
-            flush(current, overlap_carry)
+            flush(current, overlap_carry, force=True)
 
         return chunks
 

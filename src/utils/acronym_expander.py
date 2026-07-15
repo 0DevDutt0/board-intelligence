@@ -12,6 +12,7 @@ import re
 _ACRONYM_MAP = {
     'GDA':  'Group Delegated Authorities',
     'GIC':  'Group Internal Control',
+    'GIA':  'Group Internal Audit',
     'MCS':  'Minimum Control Standards',
     'HSSC': 'Health Safety Sustainability Committee',
     'ERM':  'Enterprise Risk Management',
@@ -36,6 +37,36 @@ _FULL_TO_ACRONYM = {v.lower(): k for k, v in _ACRONYM_MAP.items()}
 
 _WORD_RE = re.compile(r"[A-Za-z']+")
 
+# Governance framework terms whose PURPOSE/ROLE queries should also retrieve
+# chunks describing their oversight relationships with the Board, Audit Committee,
+# and Executive Committee. Without this expansion, "What is the purpose of ERM?"
+# doesn't surface chunks that describe ERM reporting upward through governance.
+# Word boundaries are required: bare substring checks made 'gic' match
+# 'strategic', 'erm' match 'long-term', and 'ics' match 'logistics'.
+_FRAMEWORK_TERM_RE = re.compile(
+    r'\b(erm|enterprise risk management'
+    r'|gic|group internal control'
+    r'|gia|group internal audit'
+    r'|gda|group delegated authorities'
+    r'|mcs|minimum control standards'
+    r'|ics|internal control system)\b',
+)
+
+# Query intent patterns that signal the user wants to understand how a framework
+# fits into the governance structure, not just what it does in isolation.
+_RELATIONSHIP_RE = re.compile(
+    r'\b(purpose|role|function|interact|report(?:s|ing)?\s+to|oversight'
+    r'|relationship|how\s+does|what\s+does|governed\s+by|accountabl\w*'
+    r'|responsib\w*|structure|how\s+is)\b',
+    re.IGNORECASE,
+)
+
+# Terms added to BM25 when a governance-relationship query is detected.
+# Surfaces chunks that name the oversight chain explicitly.
+_GOVERNANCE_CHAIN_EXPANSION = (
+    'Board of Directors Audit Committee Executive Committee oversight reporting'
+)
+
 
 def expand_query(query: str) -> str:
     additions = []
@@ -53,8 +84,16 @@ def expand_query(query: str) -> str:
             additions.append(acronym)
             seen.add(acronym)
 
+    # When the query asks about the PURPOSE or ROLE of a governance framework,
+    # also expand with oversight body names so BM25 retrieves chunks that
+    # describe the governance chain (e.g. ERM reports to Audit Committee).
+    framework_hit = bool(_FRAMEWORK_TERM_RE.search(query_lower))
+    if framework_hit and _RELATIONSHIP_RE.search(query):
+        if 'BOD' not in seen:
+            additions.append(_GOVERNANCE_CHAIN_EXPANSION)
+            seen.add('BOD')
+
     if not additions:
         return query
 
-    expanded = query + ' ' + ' '.join(additions)
-    return expanded
+    return query + ' ' + ' '.join(additions)

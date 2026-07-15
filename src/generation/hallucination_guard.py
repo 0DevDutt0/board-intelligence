@@ -316,9 +316,11 @@ def _classify_subject_committee(question: str, chunks: list, response_text: str 
 
 
 def _split_sentences(text: str) -> list:
-    # Split on sentence-ending punctuation and on bullet/numbered list markers
-    # so each bullet gets its own NLI score rather than the whole formatted block.
-    raw = re.split(r'(?<=[.!?])\s+|\n(?=\s*[-*•]\s)', text.strip())
+    # Split on sentence-ending punctuation, bullet/numbered list markers, and
+    # markdown headings so each bullet gets its own NLI score rather than the
+    # whole formatted block (a heading glued to a bullet crushes NLI scores).
+    # The \u2022 escape is the round bullet character, escaped so the file stays ASCII.
+    raw = re.split('(?<=[.!?])\\s+|\\n(?=\\s*[-*\u2022]\\s)|\\n(?=\\s*\\*\\*)', text.strip())
     results = []
     for p in raw:
         p = p.strip()
@@ -329,6 +331,36 @@ def _split_sentences(text: str) -> list:
             continue
         results.append(p)
     return results
+
+
+def _split_source_sentences(chunks: list) -> list:
+    '''Split retrieved chunk texts into individual sentences for NLI premises.'''
+    sents = []
+    for chunk in chunks:
+        text = chunk.get('text', '') or ''
+        for s in re.split(r'(?<=[.!?])\s+|\n+', text):
+            s = s.strip()
+            if len(s.split()) >= 3:
+                sents.append(s)
+    return sents
+
+
+def _top_candidate_premises(claim: str, source_sents: list, top_n: int = 4) -> list:
+    '''
+    Rank source sentences by keyword overlap with the claim and return the
+    best candidates. Bounds NLI cost to top_n calls per response sentence
+    while keeping premises single-sentence, which the NLI model requires.
+    '''
+    claim_words = set(re.findall(r'\b[a-z]{4,}\b', claim.lower()))
+    if not claim_words:
+        return source_sents[:top_n]
+    scored = []
+    for s in source_sents:
+        words = set(re.findall(r'\b[a-z]{4,}\b', s.lower()))
+        scored.append((len(claim_words & words), s))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    top = [s for overlap, s in scored[:top_n] if overlap > 0]
+    return top if top else source_sents[:top_n]
 
 
 def _normalize_digits(s: str) -> str:
@@ -667,15 +699,17 @@ class HallucinationGuard:
         logger.info(f'HallucinationGuard loaded NLI model from {path} on CPU')
 
     def _nli_score(self, sentence: str, premise: str) -> float:
+        # Zero-shot NLI: the chunk text is the premise (sequence) and the
+        # response sentence is the hypothesis (candidate label). The score is
+        # the entailment probability of the sentence given the chunk.
         try:
             result = self._pipe(
-                sentence,
-                candidate_labels=['entailment', 'neutral', 'contradiction'],
+                premise,
+                candidate_labels=[sentence],
                 hypothesis_template='{}',
-                multi_label=False,
+                multi_label=True,
             )
-            scores = dict(zip(result['labels'], result['scores']))
-            return scores.get('entailment', 0.0)
+            return float(result['scores'][0])
         except Exception:
             return 0.0
 
@@ -685,11 +719,25 @@ class HallucinationGuard:
         if '[unverifiable citation]' in sentence:
             return True, 1.0, []
 
+        # NLI hypothesis must be plain prose: citation tags, bullet markers,
+        # and markdown bold are formatting noise that crushes entailment scores.
+        nli_text = _CITATION_RE.sub('', sentence)
+        nli_text = re.sub(r'\*\*([^*\n]+)\*\*:?', r'\1', nli_text)
+        nli_text = re.sub(r'^\s*[-*\u2022]\s+', '', nli_text)
+        nli_text = re.sub(r'\s+', ' ', nli_text).strip()
+
+        # The NLI model is trained on single-sentence premises: scoring a claim
+        # against a whole multi-sentence chunk collapses entailment to ~0 even
+        # for clearly supported claims. Score against individual source
+        # sentences instead, pre-filtered by keyword overlap to bound cost.
+        candidates = _top_candidate_premises(nli_text, _split_source_sentences(chunks))
         max_entailment = 0.0
-        for chunk in chunks:
-            score = self._nli_score(sentence, chunk['text'])
+        for premise in candidates:
+            score = self._nli_score(nli_text, premise)
             if score > max_entailment:
                 max_entailment = score
+            if max_entailment >= self._threshold:
+                break
 
         verified = max_entailment >= self._threshold
 
