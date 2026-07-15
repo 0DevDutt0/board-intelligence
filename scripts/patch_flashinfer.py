@@ -1,6 +1,7 @@
 # scripts/patch_flashinfer.py
 # Patches two flashinfer functions that reject sm_120 (RTX 5090 Blackwell).
-# Run inside the Docker image at build time after flashinfer is installed.
+# Run inside the WSL vLLM venv after flashinfer is installed; invoked
+# automatically by scripts/start_vllm_wsl.sh on first install. Idempotent.
 #
 # Patch 1 -- flashinfer/jit/core.py :: check_cuda_arch()
 #   Stock version uses torch.cuda.get_arch_list() which may exclude sm_120.
@@ -9,7 +10,7 @@
 # Patch 2 -- flashinfer/compilation_context.py :: CompilationContext.get_nvcc_flags_list()
 #   Internal SM-major -> CUDA-major lookup table does not know about sm_120.
 #   A monkey-patch is appended to the file that reads FLASHINFER_CUDA_ARCHS
-#   (set to "12.0" in docker-compose.yml) and returns correct gencode flags.
+#   (set to "12.0" in scripts/start_vllm_wsl.sh) and returns correct gencode flags.
 #   The traceback confirms get_nvcc_flags_list() returns ONLY arch/gencode flags;
 #   all other compile flags arrive via common_cflags / extra_cuda_cflags in
 #   build_cuda_cflags(), so returning just the gencode entry is correct.
@@ -31,6 +32,10 @@ except ImportError:
 p1 = pathlib.Path(inspect.getsourcefile(jit_core_mod))
 orig1 = p1.read_text()
 
+# Idempotency: the replacement body below contains this exact line, so its
+# presence means patch 1 was already applied on a previous run.
+_P1_MARKER = 'sm = major * 10 + minor'
+
 repl1 = (
     'def check_cuda_arch():\n'
     '    import torch\n'
@@ -44,17 +49,20 @@ repl1 = (
     '\n'
 )
 
-p1_patched = re.sub(
-    r'def check_cuda_arch\(\):.*?(?=\ndef |\Z)',
-    repl1,
-    orig1,
-    flags=re.DOTALL,
-)
-if p1_patched == orig1:
-    print('WARNING: patch 1 (check_cuda_arch) pattern not found in', p1)
-    sys.exit(1)
-p1.write_text(p1_patched)
-print('Patch 1 applied: check_cuda_arch in', p1)
+if _P1_MARKER in orig1:
+    print('Patch 1 already present in:', p1)
+else:
+    p1_patched = re.sub(
+        r'def check_cuda_arch\(\):.*?(?=\ndef |\Z)',
+        repl1,
+        orig1,
+        flags=re.DOTALL,
+    )
+    if p1_patched == orig1:
+        print('WARNING: patch 1 (check_cuda_arch) pattern not found in', p1)
+        sys.exit(1)
+    p1.write_text(p1_patched)
+    print('Patch 1 applied: check_cuda_arch in', p1)
 
 
 # ------------------------------------------------------------------

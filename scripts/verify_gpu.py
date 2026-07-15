@@ -81,9 +81,10 @@ def main():
         check('nvcc available', has_nvcc, nvcc_line)
         if has_nvcc:
             if on_windows and not is_128:
-                # Windows system nvcc does not affect Docker builds.
-                # Containers use nvcr.io/nvidia/pytorch:25.02-py3 (CUDA 12.8 built-in).
-                print(f'  [INFO] nvcc is {nvcc_line} -- OK on Windows; Docker uses CUDA 12.8 internally')
+                # Windows system nvcc is not used by the pipeline. vLLM runs
+                # in WSL with a user-local CUDA 12.8 toolkit at ~/cuda-12.8
+                # installed by scripts/setup_cuda128_wsl.sh.
+                print(f'  [INFO] nvcc is {nvcc_line} -- OK on Windows; WSL uses ~/cuda-12.8 for vLLM')
             else:
                 all_pass &= check('nvcc is CUDA 12.8', is_128, 'CRITICAL: must be 12.8 not 13.x')
     except FileNotFoundError:
@@ -139,13 +140,13 @@ def main():
     print('\n' + '=' * 60)
     if all_pass:
         print('RESULT: ALL CHECKS PASSED -- environment is ready')
-        print('You can now run: docker compose up --build')
+        print('You can now run: scripts\\start_all.ps1')
     else:
         print('RESULT: SOME CHECKS FAILED -- resolve issues above before proceeding')
         print('')
         print('Common fixes:')
         print('  WSL2 too old: wsl --update  (in PowerShell)')
-        print('  CUDA wrong version: use nvcr.io/nvidia/pytorch:25.02-py3 base image')
+        print('  CUDA 12.8 missing in WSL: bash scripts/setup_cuda128_wsl.sh')
         print('  Libraries missing: pip install -r requirements.txt')
     print('')
 

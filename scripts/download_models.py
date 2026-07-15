@@ -1,6 +1,6 @@
 # scripts/download_models.py
 # Downloads all required models to the /models/ directory.
-# Run once before building Docker images.
+# Run once before first startup.
 # Requires: huggingface_hub, internet connection (one-time only)
 # Usage: python3 scripts/download_models.py
 
@@ -141,8 +141,8 @@ def main():
     print('Download complete. Verify with:')
     print('  python3 scripts/verify_gpu.py')
     print('')
-    print('Then build and start the system:')
-    print('  docker compose up --build')
+    print('Then start the system:')
+    print('  scripts\\start_all.ps1')
     print('')
 
 

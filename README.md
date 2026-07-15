@@ -112,7 +112,7 @@ This approach consistently outperforms single-modality retrieval: BM25 handles e
 | Sparse Index | rank-bm25 | BM25Okapi, k1=1.2 b=0.5, `.lower().split()` tokenization |
 | Backend | FastAPI + Uvicorn | localhost:8000, SSE streaming |
 | Frontend | React 18 + Vite + Tailwind | localhost:5173 |
-| Orchestration | Docker Compose v2 | Three-service stack |
+| Orchestration | Native scripts (PowerShell + WSL) | scripts/start_all.ps1 launches all three services |
 | Session Security | AES-256-GCM | In-memory encrypted state, 30-min timeout |
 
 ---
@@ -149,17 +149,20 @@ This approach consistently outperforms single-modality retrieval: BM25 handles e
 board-intelligence/
 ├── CLAUDE.md                    # Coding standards and implementation spec
 ├── ARCHITECTURE.md              # Full engineering design document
-├── docker-compose.yml           # Three-service orchestration
-├── Dockerfile.vllm              # vLLM CUDA 12.8 container
-├── Dockerfile.backend           # FastAPI + models container
-├── Dockerfile.frontend          # React/Vite container
 ├── requirements.txt             # Pinned Python dependencies
 ├── .env.example                 # Environment variable template
 ├── models/                      # Model weights (downloaded separately)
 ├── scripts/
-│   ├── download_models.py       # Download all 4 models to /models/
+│   ├── download_models.py       # Download all 4 models to ./models/
 │   ├── verify_gpu.py            # Confirm CUDA 12.8 + sm_120 setup
-│   └── bundle_airgap.py         # Build offline deployment tarball
+│   ├── run_backend.py           # Backend entrypoint (pyarrow preload)
+│   ├── start_all.ps1            # Launch vLLM + backend + frontend
+│   ├── start_vllm.ps1           # Launch vLLM in WSL from Windows
+│   ├── start_vllm_wsl.sh        # vLLM venv setup + server (runs in WSL)
+│   ├── setup_cuda128_wsl.sh     # User-local CUDA 12.8 toolkit for WSL
+│   ├── start_backend.ps1        # Launch FastAPI backend
+│   ├── start_frontend.ps1       # Launch Vite dev server
+│   └── patch_flashinfer.py      # flashinfer sm_120 Blackwell patch
 ├── src/
 │   ├── ingestion/
 │   │   ├── parser.py            # Docling primary, PyMuPDF fallback
@@ -219,16 +222,34 @@ board-intelligence/
 
 ## Setup
 
+The stack runs natively: the FastAPI backend and React frontend run directly on
+Windows, and vLLM runs inside WSL Ubuntu (vLLM requires Linux).
+
 ### 1. Prerequisites
 
-- Docker 29+ with NVIDIA Container Toolkit
-- WSL2 >= 2.7.0 (`wsl --update` from PowerShell if needed)
+- WSL2 >= 2.7.0 with an Ubuntu distro (`wsl --update` from PowerShell if needed)
 - NVIDIA driver >= 592.01
+- Python 3.12+ on Windows, Node 20+ for the frontend
 - ~50 GB free disk space for models
+
+**Critical: cap WSL memory in `C:\Users\<you>\.wslconfig`:**
+
+```ini
+[wsl2]
+memory=12GB
+swap=16GB
+localhostForwarding=true
+```
+
+WDDM backs GPU allocations with *Windows-side* system RAM. If the WSL VM is
+allowed to balloon to all physical RAM, Windows gets starved during model
+loading and dxgkrnl refuses GPU memory commits -- vLLM then dies with random
+CUDA OOM errors while `nvidia-smi` shows plenty of free VRAM. Run
+`wsl --shutdown` after editing the file.
 
 ### 2. Download Models
 
-Run this once before building Docker images. Requires internet access for the initial download only.
+Run once. Requires internet access for the initial download only.
 
 ```bash
 pip install huggingface_hub docling
@@ -242,37 +263,42 @@ Downloads to `./models/`:
 - `nli-deberta-v3-small` (~180 MB)
 - `docling-models` (DocLayNet + TableFormer)
 
-### 3. Verify GPU Environment
+### 3. Install Backend Dependencies
 
-```bash
-python scripts/verify_gpu.py
+```powershell
+python -m venv venv
+venv\Scripts\pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu128
+python scripts/verify_gpu.py   # CUDA available, sm_120, torch cu128, VRAM >= 20 GB
 ```
-
-All checks must pass before proceeding. Critical checks:
-- CUDA available
-- Compute capability sm_120 (RTX 5090)
-- PyTorch built with CUDA 12.8
-- VRAM >= 20 GB
 
 ### 4. Configure Environment
 
-```bash
+```powershell
 cp .env.example .env
-# Edit .env and set a strong SESSION_SECRET_KEY
+# Edit .env: set a strong SESSION_SECRET_KEY, absolute model paths,
+# VLLM_BASE_URL=http://127.0.0.1:11436, and a Windows TEMP_SESSION_DIR
 ```
 
-### 5. Build and Run
+### 5. Run
 
-```bash
-docker compose up --build
+```powershell
+scripts\start_all.ps1
 ```
 
-Startup sequence:
-1. `vllm` container starts and loads Qwen3-14B-AWQ (takes ~60-90 seconds)
-2. `backend` container waits for vLLM health check, then loads BGE-M3, reranker, and NLI guard
-3. `frontend` container starts Vite dev server
+This opens three windows and waits for each health check in order:
+1. **vLLM (WSL)** -- first run auto-installs vLLM into `~/.venvs/vllm` inside
+   WSL (several GB) and applies the Blackwell sm_120 flashinfer patch; later
+   runs go straight to model loading
+2. **Backend** -- loads BGE-M3, reranker, and NLI guard, serves on `127.0.0.1:8000`
+3. **Frontend** -- Vite dev server on `localhost:5173`
 
-Access the UI at `http://localhost:5173`.
+The services can also be started individually with `scripts\start_vllm.ps1`,
+`scripts\start_backend.ps1`, and `scripts\start_frontend.ps1`.
+
+Tip: vLLM loads the model from `/mnt/e/...` which is slow on first token of
+startup. For faster restarts, copy the model into WSL once
+(`cp -r /mnt/e/work/Resnova/board-intelligence/models/Qwen3-14B-AWQ ~/models/`)
+and set `VLLM_MODEL_DIR=~/models/Qwen3-14B-AWQ` before starting.
 
 ---
 
@@ -446,10 +472,10 @@ Unit tests mock the embedding model and GPU calls. They cover:
 
 ### Integration Tests (requires live stack)
 
-Place a test PDF at `tests/fixtures/sample_board_doc.pdf`, then:
+Place a test PDF at `tests/fixtures/sample_board_doc.pdf`, start the stack
+with `scripts\start_all.ps1`, then:
 
 ```bash
-docker compose up -d
 BIS_API_URL=http://127.0.0.1:8000 pytest tests/integration/ -v
 ```
 
@@ -526,33 +552,14 @@ RRF requires no training data, has no hyperparameters that drift with document d
 
 ---
 
-## Air-Gap Deployment
+## Offline Operation
 
-To deploy the system on a machine with no internet access:
-
-```bash
-# On the internet-connected build machine (after docker compose up --build):
-python scripts/bundle_airgap.py
-```
-
-This script:
-1. Verifies all model weights are present in `./models/`
-2. Builds all three Docker images
-3. Saves each image as a `.tar` file
-4. Copies source files and configuration templates
-5. Writes a `load_and_run.sh` helper script
-6. Packages everything as `dist/board-intelligence-YYYYMMDD_HHMMSS.tar.gz`
-
-On the air-gapped target machine:
-
-```bash
-tar -xzf board-intelligence-*.tar.gz
-cd board-intelligence-bundle
-./load_and_run.sh
-# Edit .env to set SESSION_SECRET_KEY, then docker compose up
-```
-
-The bundle does not include model weights — transfer `./models/` separately if the target machine has never run the system before.
+After the one-time setup (model download, pip installs, first vLLM start in
+WSL), the system needs no internet access: all models are local files, all
+inference is local, and the API binds to `127.0.0.1` only. To move the system
+to another machine, transfer the repository, the `./models/` directory, the
+Windows venv (or re-run `pip install -r requirements.txt` from a local wheel
+cache), and the WSL venv at `~/.venvs/vllm` plus `~/cuda-12.8`.
 
 ---
 

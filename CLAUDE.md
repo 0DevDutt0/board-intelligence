@@ -73,7 +73,28 @@ These are hard rules. Never deviate from them.
 | OCR | RapidOCR (ONNX + CUDA execution provider) |
 | Backend | FastAPI + Uvicorn (localhost:8000) |
 | Frontend | React + Vite + TailwindCSS (localhost:5173) |
-| Orchestration | Docker Compose v2 |
+| Orchestration | Native scripts (scripts/start_all.ps1) |
+
+### Native run mode (Docker was removed 2026-07-16)
+
+- Backend + frontend run natively on Windows (repo venv has torch cu128 CUDA).
+- vLLM runs directly in WSL Ubuntu in ~/.venvs/vllm (vLLM needs Linux).
+- scripts/start_vllm_wsl.sh installs and serves vLLM: cu128 wheels,
+  VLLM_USE_FLASHINFER_SAMPLER=0, FLASHINFER_CUDA_ARCHS=12.0, and
+  scripts/patch_flashinfer.py applied.
+- Machine-local config lives in .env (Windows model paths, localhost vLLM URL,
+  Windows TEMP_SESSION_DIR). Do NOT put tuned retrieval params in .env; the
+  tuned defaults live in src/utils/config.py.
+- .wslconfig MUST cap WSL memory (memory=12GB, swap=16GB). WDDM backs GPU
+  allocations with Windows-side RAM; an uncapped WSL VM starves Windows and
+  dxgkrnl refuses GPU commits -> random CUDA OOM with free VRAM showing.
+- vLLM is pinned to 0.23.0 in the WSL venv. 0.25.x regresses on WSL2 Blackwell
+  (V2 runner needs UVA which dxgkrnl lacks; flashinfer 0.6.13 warmup segfaults).
+- flashinfer JIT needs nvcc 12.8: scripts/setup_cuda128_wsl.sh installs a
+  user-local CUDA 12.8 toolkit to ~/cuda-12.8 (dpkg -x, no root).
+- The Windows backend MUST start via scripts/run_backend.py (pyarrow preload)
+  -- 'python -m uvicorn src.api.main:app' hard-crashes at model load on this
+  venv (pyarrow DLL access violation when asyncio/ssl load first).
 
 ### Key Python Libraries
 ```
@@ -103,16 +124,20 @@ deepeval
 board-intelligence/
 ├── CLAUDE.md                    <- you are here
 ├── ARCHITECTURE.md              <- full EDD reference
-├── docker-compose.yml           <- orchestration (exists)
-├── Dockerfile.vllm              <- vLLM CUDA 12.8 container (exists)
-├── Dockerfile.backend           <- FastAPI + models container
-├── Dockerfile.frontend          <- React/Vite container
 ├── .env.example                 <- environment variable template
 ├── requirements.txt             <- pinned Python deps
 ├── models/                      <- model weights (downloaded separately)
 ├── scripts/
-│   ├── download_models.py       <- downloads all 4 models to /models/
-│   └── verify_gpu.py            <- confirms CUDA 12.8 + sm_120 setup
+│   ├── download_models.py       <- downloads all 4 models to ./models/
+│   ├── verify_gpu.py            <- confirms CUDA 12.8 + sm_120 setup
+│   ├── run_backend.py           <- backend entrypoint (pyarrow preload)
+│   ├── patch_flashinfer.py      <- flashinfer sm_120 Blackwell patch
+│   ├── setup_cuda128_wsl.sh     <- user-local CUDA 12.8 toolkit for WSL
+│   ├── start_all.ps1            <- launch vLLM + backend + frontend
+│   ├── start_vllm.ps1           <- launch vLLM in WSL from Windows
+│   ├── start_vllm_wsl.sh        <- vLLM venv setup + server (runs in WSL)
+│   ├── start_backend.ps1        <- launch FastAPI backend
+│   └── start_frontend.ps1       <- launch Vite dev server
 ├── src/
 │   ├── ingestion/
 │   │   ├── __init__.py
@@ -163,7 +188,6 @@ board-intelligence/
 │       ├── golden_set.json
 │       └── eval_runner.py
 └── frontend/
-    ├── Dockerfile.frontend
     ├── package.json
     ├── vite.config.js
     ├── tailwind.config.js
@@ -203,10 +227,9 @@ Order of implementation:
 18. `src/generation/hallucination_guard.py` -- NLI verifier
 19. `src/generation/citation_injector.py` -- citation validation
 20. `src/api/main.py` + routes + session
-21. `Dockerfile.backend` + `Dockerfile.frontend`
-22. `requirements.txt`
-23. Frontend React components
-24. `tests/` -- full test suite
+21. `requirements.txt`
+22. Frontend React components
+23. `tests/` -- full test suite
 
 ### Phase 2 — Retrieval Quality
 - BM25 tuning
@@ -217,7 +240,6 @@ Order of implementation:
 - Numerical hallucination checker
 - Per-page quality scoring
 - Error boundary UI
-- Air-gap bundle script
 
 ## Pipeline Data Flow
 
