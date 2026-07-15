@@ -1,0 +1,58 @@
+# /home/claude/board-intelligence/requirements.txt
+# Pinned dependencies for Board Intelligence System backend.
+# Install inside Docker with: pip install -r requirements.txt --break-system-packages
+# PyTorch is installed separately via cu128 wheel in Dockerfile.backend.
+
+# ── Document Parsing ──────────────────────────────────────────────────────
+docling>=2.5.0
+pymupdf>=1.24.0
+pymupdf4llm>=0.0.17
+rapidocr-onnxruntime>=1.2.0
+onnxruntime-gpu>=1.18.0
+
+# ── Embeddings and Reranking ──────────────────────────────────────────────
+FlagEmbedding>=1.3.0
+sentence-transformers>=3.3.0
+transformers>=4.47.0
+tokenizers>=0.21.0
+
+# ── Vector Database ───────────────────────────────────────────────────────
+qdrant-client>=1.12.0
+
+# ── Sparse Retrieval ──────────────────────────────────────────────────────
+rank-bm25>=0.2.2
+
+# ── LLM Client ───────────────────────────────────────────────────────────
+openai>=1.54.0
+httpx>=0.27.0
+
+# ── API Framework ─────────────────────────────────────────────────────────
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+python-multipart>=0.0.12
+aiofiles>=24.1.0
+sse-starlette>=2.1.0
+
+# ── Data Validation ───────────────────────────────────────────────────────
+pydantic>=2.9.0
+pydantic-settings>=2.6.0
+
+# ── Security ─────────────────────────────────────────────────────────────
+cryptography>=43.0.0
+
+# ── Orchestration ─────────────────────────────────────────────────────────
+langchain>=0.3.0
+langchain-community>=0.3.0
+
+# ── Utilities ─────────────────────────────────────────────────────────────
+numpy>=1.26.0,<2.0
+python-dotenv>=1.0.0
+tenacity>=9.0.0
+tqdm>=4.66.0
+
+# ── Testing ───────────────────────────────────────────────────────────────
+pytest>=8.3.0
+pytest-asyncio>=0.24.0
+pytest-cov>=6.0.0
+deepeval>=2.0.0
+httpx>=0.27.0
