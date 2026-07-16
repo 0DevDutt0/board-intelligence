@@ -1,0 +1,93 @@
+/* frontend/src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Manrope (wordmark) + Inter (UI) via CDN - fall back to system fonts offline */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: #020617;
+    color: #F8FAFC;
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  /* Thin scrollbars for dark theme */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+  }
+
+  /* Focus ring */
+  :focus-visible {
+    outline: 2px solid #3B82F6;
+    outline-offset: 2px;
+  }
+
+  /* Selection */
+  ::selection {
+    background: rgba(59, 130, 246, 0.30);
+    color: #F8FAFC;
+  }
+}
+
+@layer utilities {
+  /* Subtle gradient used on surfaces */
+  .bg-gradient-surface {
+    background: linear-gradient(135deg, #0F172A 0%, #0E1223 100%);
+  }
+
+  /* Glow ring on accent elements */
+  .ring-glow {
+    box-shadow: 0 0 0 1px #3B82F6, 0 0 12px rgba(59,130,246,0.25);
+  }
+
+  /* Shimmer skeleton loader */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      #1E293B 0%,
+      #334155 50%,
+      #1E293B 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
+  }
+
+  /* Text truncate with line clamping */
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .line-clamp-5 {
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
