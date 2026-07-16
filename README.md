@@ -42,6 +42,12 @@ Board meetings generate dense, high-stakes documents: financial summaries, risk 
 
 ## Architecture
 
+<div align="center">
+
+<img src="System%20Architecture%20Diagram.png" width="100%" alt="System Architecture Diagram" />
+
+</div>
+
 ```mermaid
 flowchart TD
     PDF([📄 Board PDF Upload]):::input --> DETECT{Render mode?}
