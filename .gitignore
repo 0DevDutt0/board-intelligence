@@ -1,0 +1,47 @@
+# .gitignore
+
+# Environment (machine-local config; .env.example is the tracked template)
+.env
+*.env.local
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Models (large binary files - download with scripts/download_models.py)
+models/
+!models/.gitkeep
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Confidential documents -- test fixtures and eval outputs must never be committed
+tests/fixtures/*.pdf
+tests/rag_eval/results/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
