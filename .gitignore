@@ -46,3 +46,7 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# Local-only third-party skill assets and generated video output
+.agents/skills/brag/
+brag-output/
