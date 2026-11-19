@@ -2,15 +2,17 @@
 
 [![CI](https://github.com/0DevDutt0/board-intelligence/actions/workflows/ci.yml/badge.svg)](https://github.com/0DevDutt0/board-intelligence/actions/workflows/ci.yml)
 
+![Board Intelligence: Local AI Governance](examples/Board%20Intelligence_%20Local%20AI%20Governance.png)
+
 Local AI for board PDFs, with page citations and checks for who reviewed, recommended, or approved a decision.
 
 `The committee reviewed the project.` and `The board approved the project.` describe different decisions. Board Intelligence retrieves the evidence for each claim, checks it against the cited page, and flags unsupported changes in authority. Ask a question the source cannot answer and the assistant can abstain.
 
 ## Demo
 
-[![Illustrated Board Intelligence cover. Click to watch the 24-second demo.](Demo/thumbnail.png)](Demo/demo.mp4)
+<video src="Demo/demo.mp4" controls muted width="100%"></video>
 
-The [24-second demo](Demo/demo.mp4) shows a cited answer and an abstention from the running app. See [Privacy and verification](#privacy-and-verification) for the scope of local inference.
+If the player does not load, open the [24-second demo video](Demo/demo.mp4) directly. It shows a cited answer and an abstention from the running app. See [Privacy and verification](#privacy-and-verification) for the scope of local inference.
 
 Start with the fictional [Harbor Works board minutes](examples/board-minutes.pdf). Ask **“What did the committee review, and what did the board approve?”** and compare the cited passages. Then ask **“What did the board decide about opening an overseas office?”** to see what happens when the minutes contain no decision.
 
