@@ -1,125 +1,237 @@
-[
-  {
-    "id": "q001",
-    "question": "What are the responsibilities of the Health, Safety and Sustainability Committee?",
-    "expected_keywords": ["health", "safety", "sustainability", "board", "advises"],
-    "expected_abstain": false,
-    "expected_pages": [9, 28, 33],
-    "category": "governance"
-  },
-  {
-    "id": "q002",
-    "question": "How many ordinary meetings did the HSSC hold in 2025?",
-    "expected_keywords": ["four"],
-    "expected_abstain": false,
-    "expected_pages": [9],
-    "category": "factual_numeric"
-  },
-  {
-    "id": "q003",
-    "question": "Who are the members of the Health, Safety and Sustainability Committee?",
-    "expected_keywords": ["Philippe Block", "Leanne Geale", "Catrin Hinkel"],
-    "expected_abstain": false,
-    "expected_pages": [9],
-    "category": "factual_membership"
-  },
-  {
-    "id": "q004",
-    "question": "What percentage of shareholder approval did the Climate Report receive?",
-    "expected_keywords": ["89.75"],
-    "expected_abstain": false,
-    "expected_pages": [9],
-    "category": "factual_numeric"
-  },
-  {
-    "id": "q005",
-    "question": "What is Holcim's zero harm commitment?",
-    "expected_keywords": ["zero harm"],
-    "expected_abstain": false,
-    "expected_pages": [33],
-    "category": "governance"
-  },
-  {
-    "id": "q006",
-    "question": "Where is the HSSC charter available?",
-    "expected_keywords": ["holcim.com"],
-    "expected_abstain": false,
-    "expected_pages": [9],
-    "category": "factual"
-  },
-  {
-    "id": "q007",
-    "question": "What topics were discussed at HSSC meetings in 2025?",
-    "expected_keywords": ["KPI", "climate", "emissions", "fatalities"],
-    "expected_abstain": false,
-    "expected_pages": [9],
-    "category": "governance"
-  },
-  {
-    "id": "q008",
-    "question": "Which body oversees Holcim's risk management and internal control processes?",
-    "expected_keywords": ["Board of Directors", "Audit Committee"],
-    "expected_abstain": false,
-    "expected_pages": [28],
-    "category": "governance"
-  },
-  {
-    "id": "q009",
-    "question": "What is the average duration of HSSC meetings?",
-    "expected_keywords": ["41 minutes"],
-    "expected_abstain": false,
-    "expected_pages": [9],
-    "category": "factual_numeric"
-  },
-  {
-    "id": "q010",
-    "question": "What adverse event risks does the HSSC monitor?",
-    "expected_keywords": ["geopolitical", "pandemic", "natural disaster"],
-    "expected_abstain": false,
-    "expected_pages": [9],
-    "category": "risk"
-  },
-  {
-    "id": "q011",
-    "question": "What Security and Resilience program topics were covered by the HSSC?",
-    "expected_keywords": ["Security", "Resilience"],
-    "expected_abstain": false,
-    "expected_pages": [9],
-    "category": "governance"
-  },
-  {
-    "id": "q012",
-    "question": "How does the Board of Directors relate to the HSSC on sustainability?",
-    "expected_keywords": ["HSSC", "Board", "advises"],
-    "expected_abstain": false,
-    "expected_pages": [28],
-    "category": "governance"
-  },
-  {
-    "id": "q013",
-    "question": "What was Holcim's stock price on January 1st 2025?",
-    "expected_keywords": ["cannot find", "sufficient"],
-    "expected_abstain": true,
-    "expected_pages": [],
-    "category": "adversarial_unanswerable",
-    "notes": "Stock price not in governance report"
-  },
-  {
-    "id": "q014",
-    "question": "What is the weather forecast for Zurich next week?",
-    "expected_keywords": ["cannot find", "sufficient"],
-    "expected_abstain": true,
-    "expected_pages": [],
-    "category": "adversarial_unanswerable",
-    "notes": "Weather not in any board document"
-  },
-  {
-    "id": "q015",
-    "question": "What was the company revenue in 1850?",
-    "expected_keywords": ["cannot find", "sufficient"],
-    "expected_abstain": true,
-    "expected_pages": [],
-    "category": "adversarial_unanswerable",
-    "notes": "1850 predates any modern company record in the document"
-  }
-]
+{
+  "questions": [
+    {
+      "id": "HW-01",
+      "pack": "harbor-works",
+      "question": "What did the Operations Committee review, and what did the Board approve?",
+      "facts": [
+        {
+          "match": "(?=.*operations committee)(?=.*review)(?=.*electrification)",
+          "pages": [
+            1
+          ]
+        },
+        {
+          "match": "(?=.*\\bboard\\b)(?=.*approv)(?=.*phase (?:one|1))",
+          "pages": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "id": "HW-02",
+      "pack": "harbor-works",
+      "question": "How much did the Board authorize for phase one of dock electrification?",
+      "facts": [
+        {
+          "match": "\\$?4\\.2\\s*(?:million|m\\b)|4,200,000",
+          "pages": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "id": "HW-03",
+      "pack": "harbor-works",
+      "question": "When is the updated outage plan due?",
+      "facts": [
+        {
+          "match": "18\\s+june|june\\s+18",
+          "pages": [
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "id": "HW-04",
+      "pack": "harbor-works",
+      "question": "What did the board decide about opening an overseas office?",
+      "facts": []
+    },
+    {
+      "id": "CT-01",
+      "pack": "cedar-transit",
+      "question": "Who approved the 2027 internal audit plan?",
+      "facts": [
+        {
+          "match": "(?=.*audit committee)(?=.*approv)(?=.*audit plan)",
+          "pages": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "id": "CT-02",
+      "pack": "cedar-transit",
+      "question": "What did the Capital Planning Committee recommend?",
+      "facts": [
+        {
+          "match": "(?=.*replac)(?=.*depot heating units)",
+          "pages": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "CT-03",
+      "pack": "cedar-transit",
+      "question": "What was the spending cap for the depot heating units?",
+      "facts": [
+        {
+          "match": "760[ ,]?000|760\\s*k\\b",
+          "pages": [
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "id": "CT-04",
+      "pack": "cedar-transit",
+      "question": "What acquisition target did the Board select?",
+      "facts": []
+    },
+    {
+      "id": "ME-01",
+      "pack": "maple-energy",
+      "question": "How many facilities did the Sustainability Committee recommend, and how many did the Board approve for the pilot?",
+      "facts": [
+        {
+          "match": "(?=.*recommend)(?=.*(?:three|3) facilities)",
+          "pages": [
+            1
+          ]
+        },
+        {
+          "match": "(?=.*approv)(?=.*(?:two|2) facilities)",
+          "pages": [
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ME-02",
+      "pack": "maple-energy",
+      "question": "What policy did the Risk Committee approve?",
+      "facts": [
+        {
+          "match": "incident escalation policy",
+          "pages": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ME-03",
+      "pack": "maple-energy",
+      "question": "Who did the Board assign to lead the methane monitoring pilot?",
+      "facts": [
+        {
+          "match": "mara sen|chief operating officer",
+          "pages": [
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ME-04",
+      "pack": "maple-energy",
+      "question": "Which supplier did the Board select for the methane monitoring pilot?",
+      "facts": []
+    }
+  ],
+  "governance_replay": [
+    {
+      "id": "G-01",
+      "pack": "harbor-works",
+      "page": 1,
+      "claim": "The Operations Committee approved the dock electrification proposal.",
+      "should_warn": true
+    },
+    {
+      "id": "G-02",
+      "pack": "harbor-works",
+      "page": 1,
+      "claim": "The Operations Committee reviewed the dock electrification proposal.",
+      "should_warn": false
+    },
+    {
+      "id": "G-03",
+      "pack": "harbor-works",
+      "page": 1,
+      "claim": "The Operations Committee authorized a two-phase rollout.",
+      "should_warn": true
+    },
+    {
+      "id": "G-04",
+      "pack": "harbor-works",
+      "page": 2,
+      "claim": "The Board approved phase one of the dock electrification project.",
+      "should_warn": false
+    },
+    {
+      "id": "G-05",
+      "pack": "cedar-transit",
+      "page": 1,
+      "claim": "The Capital Planning Committee approved replacing depot heating units.",
+      "should_warn": true
+    },
+    {
+      "id": "G-06",
+      "pack": "cedar-transit",
+      "page": 1,
+      "claim": "The Capital Planning Committee recommended replacing depot heating units.",
+      "should_warn": false
+    },
+    {
+      "id": "G-07",
+      "pack": "cedar-transit",
+      "page": 2,
+      "claim": "The Audit Committee approved the 2027 internal audit plan.",
+      "should_warn": false
+    },
+    {
+      "id": "G-08",
+      "pack": "cedar-transit",
+      "page": 3,
+      "claim": "The Board approved the replacement of depot heating units.",
+      "should_warn": false
+    },
+    {
+      "id": "G-09",
+      "pack": "maple-energy",
+      "page": 1,
+      "claim": "The Sustainability Committee approved the methane monitoring pilot.",
+      "should_warn": true
+    },
+    {
+      "id": "G-10",
+      "pack": "maple-energy",
+      "page": 1,
+      "claim": "The Sustainability Committee reviewed the methane monitoring pilot.",
+      "should_warn": false
+    },
+    {
+      "id": "G-11",
+      "pack": "maple-energy",
+      "page": 2,
+      "claim": "The Risk Committee approved the revised incident escalation policy.",
+      "should_warn": false
+    },
+    {
+      "id": "G-12",
+      "pack": "maple-energy",
+      "page": 3,
+      "claim": "The Board approved a methane monitoring pilot at two facilities.",
+      "should_warn": false
+    }
+  ]
+}

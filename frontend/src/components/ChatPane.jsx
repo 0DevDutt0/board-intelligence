@@ -320,11 +320,9 @@ function CopyButton({ text }) {
 function EvalFooter({ msg }) {
   const clean = (msg.text || '').replace(/<think>[\s\S]*?<\/think>/g, '')
   const citCount = (clean.match(/\[Page \d+\]/g) || []).length
-  const hasMeta = citCount > 0 || msg.eval_warnings !== undefined || msg.latency_ms !== undefined
+  const status = msg.verificationStatus
+  const hasMeta = citCount > 0 || status || msg.latency_ms !== undefined
   if (!hasMeta) return null
-
-  const verified  = msg.eval_warnings !== undefined && msg.eval_warnings.length === 0
-  const warnCount = msg.eval_warnings ? msg.eval_warnings.length : 0
 
   return (
     <div className="flex items-center gap-3 mt-2 pt-2 border-t border-border-subtle text-xs text-ink-disabled flex-wrap">
@@ -336,19 +334,18 @@ function EvalFooter({ msg }) {
         </span>
       )}
 
-      {msg.eval_warnings !== undefined && (
-        verified ? (
-          <span className="flex items-center gap-1 text-status-online">
-            <CheckSmIcon color="#22C55E" />
-            Verified
-          </span>
-        ) : (
-          <span className="flex items-center gap-1 text-status-warning">
-            <WarnIcon />
-            {warnCount} warning{warnCount !== 1 ? 's' : ''}
-          </span>
-        )
+      {status === 'pending' && <span role="status" className="text-ink-secondary">Checking citations…</span>}
+      {status === 'supported' && (
+        <span className="flex items-center gap-1 text-status-online">
+          <CheckSmIcon color="#22C55E" />
+          Supported by cited evidence
+        </span>
       )}
+      {status === 'needs_review' && (
+        <span className="flex items-center gap-1 text-status-warning"><WarnIcon />Needs review</span>
+      )}
+      {status === 'unavailable' && <span className="text-status-warning">Verification unavailable</span>}
+      {status === 'abstained' && <span className="text-ink-secondary">Insufficient evidence</span>}
 
       {msg.token_count !== undefined && (
         <span>{msg.token_count} tokens</span>
@@ -411,6 +408,9 @@ export default function ChatPane({ apiBase, sessionId, onCitations, onDone }) {
   const [streaming, setStreaming] = useState(false)
   const bottomRef    = useRef(null)
   const textareaRef  = useRef(null)
+  const requestRef = useRef(null)
+
+  useEffect(() => () => requestRef.current?.abort(), [])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -425,12 +425,15 @@ export default function ChatPane({ apiBase, sessionId, onCitations, onDone }) {
     const assistantMsg = { role: 'assistant', text: '', streaming: true }
     setMessages(prev => [...prev, userMsg, assistantMsg])
     setStreaming(true)
+    const request = new AbortController()
+    requestRef.current = request
 
     try {
       const resp = await fetch(`${apiBase}/query`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Session-ID': sessionId },
         body: JSON.stringify({ question, use_hyde: true }),
+        signal: request.signal,
       })
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
 
@@ -478,7 +481,12 @@ export default function ChatPane({ apiBase, sessionId, onCitations, onDone }) {
                   const msgs = [...prev]
                   const last = msgs[msgs.length - 1]
                   if (last?.role === 'assistant') {
-                    msgs[msgs.length - 1] = { ...last, text: obj.text }
+                    msgs[msgs.length - 1] = {
+                      ...last,
+                      text: obj.text,
+                      streaming: false,
+                      verificationStatus: 'pending',
+                    }
                   }
                   return msgs
                 })
@@ -510,6 +518,7 @@ export default function ChatPane({ apiBase, sessionId, onCitations, onDone }) {
                     msgs[msgs.length - 1] = {
                       ...last,
                       eval_warnings: obj.warnings || [],
+                      verificationStatus: obj.status || 'unavailable',
                     }
                   }
                   return msgs
@@ -539,24 +548,32 @@ export default function ChatPane({ apiBase, sessionId, onCitations, onDone }) {
         }
       }
     } catch (err) {
+      if (request.signal.aborted) return
       setMessages(prev => {
         const msgs = [...prev]
         const last = msgs[msgs.length - 1]
         if (last?.role === 'assistant') {
-          msgs[msgs.length - 1] = { ...last, text: `Error: ${err.message}`, streaming: false }
+          msgs[msgs.length - 1] = last.verificationStatus === 'pending'
+            ? { ...last, verificationStatus: 'unavailable' }
+            : { ...last, text: `Error: ${err.message}`, streaming: false, isError: true }
         }
         return msgs
       })
     } finally {
-      setMessages(prev => {
+      requestRef.current = null
+      if (!request.signal.aborted) setMessages(prev => {
         const msgs = [...prev]
         const last = msgs[msgs.length - 1]
         if (last?.role === 'assistant') {
-          msgs[msgs.length - 1] = { ...last, streaming: false }
+          msgs[msgs.length - 1] = {
+            ...last,
+            streaming: false,
+            verificationStatus: last.verificationStatus === 'pending' ? 'unavailable' : last.verificationStatus,
+          }
         }
         return msgs
       })
-      setStreaming(false)
+      if (!request.signal.aborted) setStreaming(false)
     }
   }, [input, streaming, apiBase, sessionId, onCitations, onDone])
 

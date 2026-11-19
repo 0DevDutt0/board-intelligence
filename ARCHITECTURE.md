@@ -4,9 +4,10 @@
 
 ## 1. System Overview
 
-Fully offline, enterprise-grade Board Intelligence System using RAG.
-Processes one confidential PDF at meeting start, answers natural-language
-questions with page-level citations. Zero network egress. All inference local.
+Local RAG for board documents. Each session processes one PDF and answers
+natural-language questions with citations. Model inference runs locally after
+setup. See the [README](README.md#privacy-and-verification) for the runtime
+privacy boundary.
 
 Hardware: RTX 5090 Laptop (sm_120, 24 GB VRAM), 23 GB RAM, WSL2 2.7.8.0.
 
@@ -167,28 +168,24 @@ Context format per chunk:
 ## 7. Hallucination Guard Details
 
 ### NLI verification pass
-For each sentence S in the response:
-1. Run NLI model on (S, chunk_i) for all 5 retrieved chunks
-2. If max entailment score across all chunks >= 0.70: verified
-3. If max entailment score < 0.70: mark sentence with warning
-4. Numeric check: extract all numbers from S, verify each appears
-   verbatim in at least one of the 5 chunks
+For each answer claim, group the retrieved passages by the pages it cites.
+Rank up to four candidate sentences per cited page and require at least one
+candidate above the entailment threshold for each page. Numeric and governance
+checks run on the cited evidence. A warning moves the answer to Needs review.
 
 ### Citation validation
 1. Extract all [Page N] tags from response via regex
-2. For each tag, verify N is a real page number in the session's chunk index
+2. For each tag, verify N is a page in the retrieved evidence for the query
 3. Invalid tags -> replace with [unverifiable citation]
 4. Sentences with no citation tag -> flag for review
 
 ## 8. Session Management
 
-Session lifecycle:
-1. POST /ingest: create session_id (uuid4), create /tmp/bis-sessions/{id}/
-2. Write PDF to /tmp/bis-sessions/{id}/document.pdf with mode 0o600
-3. Run full ingestion pipeline, store results in session state
-4. Session expires after 30 minutes of inactivity
-5. On expiry or explicit end: zero-fill PDF temp file, rmtree session dir
-6. Qdrant collection dropped (in-memory auto-clears)
+The browser uploads the PDF body, which the API reads and parses in memory.
+The application retains extracted chunks and indexes as live objects. The
+compatibility multipart route may use a temporary spool managed by the HTTP
+framework. The session ends after inactivity, an explicit DELETE, or shutdown.
+Ending it releases both the encrypted state and the live indexes.
 
 Session state (encrypted AES-256-GCM in memory):
 ```python

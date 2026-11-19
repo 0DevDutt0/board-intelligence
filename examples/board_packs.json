@@ -1,0 +1,89 @@
+{
+  "harbor-works": {
+    "title": "Harbor Works | Board Minutes",
+    "pages": [
+      {
+        "heading": "Operations Committee",
+        "lines": [
+          "The Operations Committee reviewed the dock electrification proposal.",
+          "The Operations Committee recommended a two-phase rollout to the Board.",
+          "The committee requested an updated outage plan from the operations director."
+        ]
+      },
+      {
+        "heading": "Board resolutions",
+        "lines": [
+          "The Board approved phase one of the dock electrification project.",
+          "The Board authorized $4.2 million for phase one of dock electrification.",
+          "The Board deferred phase two of dock electrification until the July review."
+        ]
+      },
+      {
+        "heading": "Follow-up actions",
+        "lines": [
+          "The operations director will deliver the updated outage plan by 18 June.",
+          "The finance director will report on phase-one spending in July.",
+          "The Board moved the next regular meeting to 24 July."
+        ]
+      }
+    ]
+  },
+  "cedar-transit": {
+    "title": "Cedar Transit | Governance Record",
+    "pages": [
+      {
+        "heading": "Capital Planning Committee",
+        "lines": [
+          "The Capital Planning Committee recommended replacing depot heating units.",
+          "The Capital Planning Committee reviewed two equipment bids.",
+          "The committee asked management to collect monthly energy figures."
+        ]
+      },
+      {
+        "heading": "Audit Committee",
+        "lines": [
+          "The Audit Committee approved the 2027 internal audit plan.",
+          "The Audit Committee appointed Lena Park as engagement lead.",
+          "The first audit review is scheduled for September."
+        ]
+      },
+      {
+        "heading": "Board decision",
+        "lines": [
+          "The Board approved the replacement of depot heating units.",
+          "The Board set a spending cap of $760,000 for depot heating units.",
+          "The Board asked the finance team to report actual spending each quarter."
+        ]
+      }
+    ]
+  },
+  "maple-energy": {
+    "title": "Maple Energy | Board and Committee Record",
+    "pages": [
+      {
+        "heading": "Sustainability Committee",
+        "lines": [
+          "The Sustainability Committee reviewed the methane monitoring pilot.",
+          "The Sustainability Committee recommended a pilot at three facilities.",
+          "The committee requested a baseline emissions report."
+        ]
+      },
+      {
+        "heading": "Risk Committee",
+        "lines": [
+          "The Risk Committee approved the revised incident escalation policy.",
+          "The Risk Committee set the escalation threshold at 30 minutes.",
+          "The next policy review is scheduled for December."
+        ]
+      },
+      {
+        "heading": "Board resolutions",
+        "lines": [
+          "The Board approved a methane monitoring pilot at two facilities.",
+          "The Board allocated $285,000 to the methane monitoring pilot.",
+          "The Board assigned the pilot to Chief Operating Officer Mara Sen."
+        ]
+      }
+    ]
+  }
+}

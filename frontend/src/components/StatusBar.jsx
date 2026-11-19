@@ -71,10 +71,6 @@ export default function StatusBar({ ingestStats, lastLatency, docName }) {
         </span>
       )}
 
-      {/* Offline badge */}
-      <span className="ml-auto flex items-center gap-1 px-1.5 py-0.5 rounded border border-border-subtle text-ink-disabled">
-        <span style={{ fontSize: '10px' }}>AIR-GAPPED</span>
-      </span>
     </div>
   )
 }

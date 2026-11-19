@@ -40,16 +40,14 @@ export default {
       },
       fontFamily: {
         wordmark: [
-          'Manrope',
-          'Inter',
+          'system-ui',
+          'Segoe UI',
           'sans-serif',
         ],
         sans: [
-          'Inter',
           'system-ui',
           '-apple-system',
           'Segoe UI',
-          'Roboto',
           'sans-serif',
         ],
         mono: [

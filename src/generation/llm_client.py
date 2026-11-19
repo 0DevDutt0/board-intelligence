@@ -1,6 +1,6 @@
 # src/generation/llm_client.py
 from typing import AsyncIterator, Optional
-from src.utils.config import settings
+from src.utils.config import loopback_url, settings
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -8,13 +8,15 @@ logger = get_logger(__name__)
 
 class LLMClient:
     def __init__(self, base_url: str = None, model: str = None):
+        import httpx
         import openai
-        self._base_url = base_url or settings.vllm_base_url
+        self._base_url = loopback_url(base_url or settings.vllm_base_url)
         self._model = model or settings.vllm_model
         self._client = openai.AsyncOpenAI(
             base_url=self._base_url + '/v1',
             api_key='not-required',
             timeout=settings.vllm_timeout_seconds,
+            http_client=httpx.AsyncClient(trust_env=False, follow_redirects=False),
         )
         logger.info(f'LLMClient pointed at {self._base_url}, model={self._model}')
 
@@ -62,3 +64,6 @@ class LLMClient:
             return len(models.data) > 0
         except Exception:
             return False
+
+    async def close(self):
+        await self._client.close()

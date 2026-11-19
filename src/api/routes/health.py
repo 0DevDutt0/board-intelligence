@@ -24,7 +24,7 @@ async def health():
     try:
         import httpx
         from src.utils.config import settings
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=5.0, trust_env=False) as client:
             resp = await client.get(settings.vllm_base_url + '/health')
             status['vllm_ready'] = resp.status_code == 200
     except Exception:

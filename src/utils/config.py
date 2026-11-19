@@ -1,7 +1,29 @@
 # src/utils/config.py
-from pathlib import Path
+from secrets import token_hex
+from urllib.parse import urlsplit
+from ipaddress import ip_address
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field
+from pydantic import Field, field_validator
+
+
+def loopback_url(value: str) -> str:
+    url = urlsplit(value)
+    host = url.hostname
+    try:
+        is_loopback = host == 'localhost' or bool(host and ip_address(host).is_loopback)
+    except ValueError:
+        is_loopback = False
+    if (
+        not is_loopback
+        or url.scheme not in {'http', 'https'}
+        or url.username is not None
+        or url.password is not None
+        or url.path not in {'', '/'}
+        or url.query
+        or url.fragment
+    ):
+        raise ValueError('vLLM must use a loopback HTTP(S) origin, such as http://127.0.0.1:11436')
+    return value.rstrip('/')
 
 
 class Settings(BaseSettings):
@@ -10,20 +32,21 @@ class Settings(BaseSettings):
         env_file_encoding='utf-8',
         case_sensitive=False,
         extra='ignore',
+        hide_input_in_errors=True,
     )
 
     # vLLM
-    vllm_base_url: str = Field(default='http://vllm:11436')
+    vllm_base_url: str = Field(default='http://127.0.0.1:11436')
     vllm_model: str = Field(default='qwen3-14b')
     vllm_max_tokens: int = Field(default=4096)
     vllm_temperature: float = Field(default=0.1)
     vllm_timeout_seconds: int = Field(default=300)
 
     # Model paths
-    embedding_model: str = Field(default='/models/bge-m3')
-    reranker_model: str = Field(default='/models/bge-reranker-v2-m3')
-    nli_model: str = Field(default='/models/nli-deberta-v3-small')
-    docling_artifacts: str = Field(default='/models/docling-models')
+    embedding_model: str = Field(default='models/bge-m3')
+    reranker_model: str = Field(default='models/bge-reranker-v2-m3')
+    nli_model: str = Field(default='models/nli-deberta-v3-small')
+    docling_artifacts: str = Field(default='models/docling-models')
 
     # Hardware
     device: str = Field(default='cuda')
@@ -53,10 +76,9 @@ class Settings(BaseSettings):
     numeric_verification: bool = Field(default=True)
 
     # Session
-    session_secret_key: str = Field(default='change-me-in-production')
+    session_secret_key: str = Field(default_factory=lambda: token_hex(32), min_length=32)
     session_timeout_minutes: int = Field(default=30)
     max_conversation_history: int = Field(default=3)
-    temp_session_dir: str = Field(default='/tmp/bis-sessions')
     max_upload_mb: int = Field(default=100)
 
     # API
@@ -65,13 +87,10 @@ class Settings(BaseSettings):
     log_level: str = Field(default='INFO')
     log_queries: bool = Field(default=False)
 
+    _validate_vllm_origin = field_validator('vllm_base_url')(loopback_url)
+
     @property
     def max_upload_bytes(self) -> int:
         return self.max_upload_mb * 1024 * 1024
-
-    @property
-    def temp_session_path(self) -> Path:
-        return Path(self.temp_session_dir)
-
 
 settings = Settings()

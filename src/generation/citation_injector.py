@@ -3,6 +3,28 @@ import re
 
 
 _CITATION_RE = re.compile(r'\[Page (\d+)\]')
+_CLAIM_BOUNDARY_RE = re.compile(r'(?<=[.!?])\s+(?=[A-Z0-9])|(?<=\])\s+(?=[A-Z0-9])')
+_LIST_PREFIX_RE = re.compile(r'^(?:[-*•]|\d+[.)])\s+')
+_HEADING_ONLY_RE = re.compile(r'^(?:#{1,6}\s+.+|\*\*[^*]+\*\*:?|[-*_]{3,})$')
+ABSTENTION = 'I cannot find sufficient information in the document.'
+
+
+def is_abstention(text: str) -> bool:
+    return text.strip().rstrip('.').casefold() == ABSTENTION.rstrip('.').casefold()
+
+
+def extract_claims(text: str) -> list[str]:
+    claims = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or _HEADING_ONLY_RE.fullmatch(line):
+            continue
+        bullet = _LIST_PREFIX_RE.match(line)
+        if bullet:
+            claims.append(line[bullet.end():])
+        else:
+            claims.extend(_CLAIM_BOUNDARY_RE.split(line))
+    return claims
 
 
 def extract_citation_tags(text: str) -> list:

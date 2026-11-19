@@ -9,7 +9,6 @@ from pydantic import BaseModel
 from src.utils.config import settings
 from src.utils.logger import get_logger
 from src.api.session import session_store
-from src.retrieval.hybrid_retriever import HybridRetriever
 from src.retrieval.rrf_fusion import reciprocal_rank_fusion
 from src.generation.prompt_builder import build_prompt
 from src.generation.citation_injector import validate_citations
@@ -22,9 +21,6 @@ _THINK_RE = re.compile(r'<think>.*?</think>', re.DOTALL)
 
 def _strip_think_blocks(text: str) -> str:
     return _THINK_RE.sub('', text).strip()
-
-_retriever = HybridRetriever()
-
 
 class QueryRequest(BaseModel):
     question: str
@@ -50,7 +46,6 @@ async def _stream_query(
     pipeline = await session_store.get_pipeline(session_id)
     bm25 = pipeline.get('bm25')
     vector_store = pipeline.get('vector_store')
-    valid_pages_set = pipeline.get('valid_pages_set', set())
     all_chunks = pipeline.get('chunks', [])
 
     if bm25 is None or vector_store is None:
@@ -61,6 +56,7 @@ async def _stream_query(
     reranker = app_state['reranker']
     llm_client = app_state['llm_client']
     guard = app_state['guard']
+    retriever = app_state['retriever']
 
     conv_history = state.get('conversation_history', [])
 
@@ -70,12 +66,12 @@ async def _stream_query(
     effective_hyde = use_hyde and word_count >= settings.hyde_min_query_words
 
     try:
-        dense, sparse = await _retriever.retrieve(
+        dense, sparse = await retriever.retrieve(
             question, embedder, bm25, vector_store, effective_hyde,
             conversation_history=conv_history,
         )
-    except Exception as exc:
-        logger.error(f'Retrieval failed: {exc}')
+    except Exception:
+        logger.error('Retrieval failed')
         dense, sparse = [], []
 
     fused = reciprocal_rank_fusion([dense, sparse], k=settings.rrf_k)
@@ -85,8 +81,8 @@ async def _stream_query(
         top_chunks = await loop.run_in_executor(
             None, reranker.rerank, question, fused, settings.reranker_top_k
         )
-    except Exception as exc:
-        logger.error(f'Reranking failed: {exc}')
+    except Exception:
+        logger.error('Reranking failed')
         top_chunks = fused[:settings.reranker_top_k]
 
     # Drop chunks whose reranker score is below the minimum threshold.
@@ -142,10 +138,10 @@ async def _stream_query(
             full_response.append(token)
             token_count += 1
             yield _sse_event('chunk', {'text': token})
-    except Exception as exc:
-        logger.error(f'LLM streaming failed: {exc}')
+    except Exception:
+        logger.error('LLM streaming failed')
         yield _sse_event('error', {
-            'error': f'Generation failed: {exc}',
+            'error': 'Local answer generation failed',
             'stage': 'generation',
             'recoverable': True,
         })
@@ -172,8 +168,6 @@ async def _stream_query(
     # is already replaced with [unverifiable citation] at this point.
     yield _sse_event('corrected', {'text': validated_text})
 
-    guard_task = asyncio.create_task(guard.verify(validated_text, top_chunks, question=question))
-
     t_elapsed = time.perf_counter() - t_start
     yield _sse_event('done', {
         'total_tokens': token_count,
@@ -181,15 +175,19 @@ async def _stream_query(
     })
 
     try:
-        warnings = await asyncio.wait_for(guard_task, timeout=30.0)
-        # Always send verification event so the client can show Verified or warnings
-        yield _sse_event('verification', {'warnings': warnings or []})
+        verification = await asyncio.wait_for(
+            guard.verify(validated_text, top_chunks, question=question), timeout=30.0,
+        )
     except asyncio.TimeoutError:
         logger.warning('Hallucination guard timed out')
-    except Exception as exc:
-        logger.error(f'Hallucination guard error: {exc}')
+        verification = {'status': 'unavailable', 'warnings': [], 'claim_count': 0}
+    except Exception:
+        logger.error('Hallucination guard failed')
+        verification = {'status': 'unavailable', 'warnings': [], 'claim_count': 0}
 
-    await session_store.append_conversation(session_id, question, validated_text)
+    if verification['status'] in {'supported', 'abstained'}:
+        await session_store.append_conversation(session_id, question, validated_text)
+    yield _sse_event('verification', verification)
 
 
 @router.post('/query')

@@ -6,7 +6,7 @@
 
 import os
 import sys
-import hashlib
+import subprocess
 from pathlib import Path
 
 
@@ -71,25 +71,11 @@ def download_hf_model(repo_id, local_dir, ignore_patterns=None):
 
 
 def download_docling_models(local_dir):
-    try:
-        from docling.pipeline.standard_pdf_pipeline import StandardPdfPipeline
-        from docling.datamodel.pipeline_options import PdfPipelineOptions
-    except ImportError:
-        print('  WARNING: docling not installed, skipping docling model download')
-        print('  Install with: pip install docling')
-        return
-
     local_dir = Path(local_dir)
-    local_dir.mkdir(parents=True, exist_ok=True)
-
-    print(f'  Downloading Docling models (DocLayNet + TableFormer) -> {local_dir}')
-    pipeline_options = PdfPipelineOptions(artifacts_path=str(local_dir))
-    try:
-        _ = StandardPdfPipeline(pipeline_options=pipeline_options)
-        print(f'  Done: {local_dir}')
-    except Exception as e:
-        print(f'  WARNING: Docling model download encountered an error: {e}')
-        print('  Models may download on first run instead.')
+    executable = Path(sys.executable).with_name('docling-tools.exe' if os.name == 'nt' else 'docling-tools')
+    if not executable.is_file():
+        raise SystemExit('docling-tools is missing. Install the backend requirements before downloading models.')
+    subprocess.run([str(executable), 'models', 'download', '--output-dir', str(local_dir)], check=True)
 
 
 def check_disk_space(required_gb=30):
@@ -114,8 +100,10 @@ def main():
 
     total = len(MODELS) + 1
     for i, model in enumerate(MODELS, 1):
-        already_exists = Path(model['local_dir']).exists() and \
-            any(Path(model['local_dir']).iterdir())
+        directory = model['local_dir']
+        already_exists = (directory / 'config.json').is_file() and any(
+            directory.glob('*.safetensors')
+        )
 
         print(f'[{i}/{total}] {model["name"]} ({model["size_hint"]})')
         print(f'  {model["description"]}')

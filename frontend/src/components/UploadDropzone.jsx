@@ -57,13 +57,11 @@ export default function UploadDropzone({ apiBase, onComplete }) {
     setUploading(true)
     setProgress('Uploading and parsing PDF...')
 
-    const form = new FormData()
-    form.append('file', file)
-
     try {
       const resp = await fetch(`${apiBase}/ingest`, {
         method: 'POST',
-        body: form,
+        headers: { 'Content-Type': 'application/pdf', 'X-Filename': encodeURIComponent(file.name) },
+        body: file,
       })
       if (!resp.ok) {
         const body = await resp.json().catch(() => ({}))
@@ -74,7 +72,6 @@ export default function UploadDropzone({ apiBase, onComplete }) {
         throw new Error(msg)
       }
       const data = await resp.json()
-      data.doc_filename = file.name
       setProgress(`Indexed ${data.page_count} pages, ${data.chunk_count} chunks`)
       setDone(true)
       setTimeout(() => onComplete(data), 600)

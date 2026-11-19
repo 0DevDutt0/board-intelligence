@@ -1,0 +1,13 @@
+# CPU-only dependencies for the unit tests and in-process API smoke tests.
+pymupdf==1.27.2.3
+pymupdf4llm==1.27.2.3
+fastapi==0.138.1
+python-multipart==0.0.32
+pydantic-settings==2.14.2
+httpx==0.28.1
+cryptography==49.0.0
+numpy==2.4.4
+rank-bm25==0.2.2
+qdrant-client==1.18.0
+pytest==9.1.1
+pytest-asyncio==1.4.0

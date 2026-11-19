@@ -28,8 +28,9 @@ build/
 frontend/node_modules/
 frontend/dist/
 
-# Confidential documents -- test fixtures and eval outputs must never be committed
-tests/fixtures/*.pdf
+# Keep input documents private. The checked-in examples are generated fiction.
+*.pdf
+!/examples/board-minutes.pdf
 tests/rag_eval/results/
 
 # IDE

@@ -83,6 +83,8 @@ export default function App() {
   const [sourceChunks, setSourceChunks] = useState([])
   const [lastLatency, setLastLatency] = useState(null)
   const [docName, setDocName]         = useState('')
+  const [ending, setEnding]          = useState(false)
+  const [endError, setEndError]      = useState('')
 
   function handleIngestComplete(data) {
     setSessionId(data.session_id)
@@ -99,12 +101,22 @@ export default function App() {
     setLastLatency(data.latency_ms)
   }
 
-  function handleEndSession() {
-    setSessionId(null)
-    setIngestStats(null)
-    setSourceChunks([])
-    setLastLatency(null)
-    setDocName('')
+  async function handleEndSession() {
+    setEnding(true)
+    setEndError('')
+    try {
+      const response = await fetch(`${API_BASE}/session/${encodeURIComponent(sessionId)}`, { method: 'DELETE' })
+      if (!response.ok && response.status !== 404) throw new Error('Session cleanup failed')
+      setSessionId(null)
+      setIngestStats(null)
+      setSourceChunks([])
+      setLastLatency(null)
+      setDocName('')
+    } catch {
+      setEndError('Could not end the session. Try again.')
+    } finally {
+      setEnding(false)
+    }
   }
 
   if (!sessionId) {
@@ -130,8 +142,7 @@ export default function App() {
           {/* Upload card */}
           <div className="w-full bg-surface-card border border-border rounded-2xl p-8 shadow-card_lg">
             <p className="text-ink-secondary text-sm text-center mb-6">
-              Upload a confidential board meeting PDF. All processing
-              happens entirely on local hardware with zero network egress.
+              Upload a board meeting PDF to ask questions with page citations.
             </p>
             <UploadDropzone
               apiBase={API_BASE}
@@ -142,7 +153,7 @@ export default function App() {
           {/* Trust badge */}
           <div className="mt-6 flex items-center gap-1.5 text-xs text-ink-tertiary">
             <LockIcon />
-            <span>Air-gapped processing - no data leaves this machine</span>
+            <span>Local inference after setup</span>
           </div>
         </div>
       </div>
@@ -166,16 +177,20 @@ export default function App() {
           )}
         </div>
 
-        <button
+        <div className="flex items-center gap-3">
+          {endError && <span role="alert" className="text-xs text-status-error">{endError}</span>}
+          <button
           onClick={handleEndSession}
+          disabled={ending}
           className="flex items-center gap-1.5 text-xs text-ink-tertiary hover:text-status-error
                      transition-colors duration-150 cursor-pointer px-2 py-1 rounded-lg
                      hover:bg-status-error/10"
           aria-label="End session"
         >
           <LogOutIcon />
-          <span>End Session</span>
-        </button>
+          <span>{ending ? 'Ending session…' : 'End Session'}</span>
+          </button>
+        </div>
       </header>
 
       {/* Main content */}

@@ -1,5 +1,7 @@
 # src/api/main.py
 from contextlib import asynccontextmanager
+import os
+from pathlib import Path
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -19,34 +21,43 @@ app_state = {}
 async def lifespan(app: FastAPI):
     logger.info('Board Intelligence System starting up')
 
+    os.environ['HF_HUB_OFFLINE'] = '1'
+    os.environ['TRANSFORMERS_OFFLINE'] = '1'
+    model_paths = [
+        Path(configured).resolve()
+        for configured in (settings.embedding_model, settings.reranker_model, settings.nli_model)
+    ]
+    for path in model_paths:
+        if not (path / 'config.json').is_file():
+            raise RuntimeError(f'Local model is missing at {path}. Run scripts/download_models.py.')
+
     logger.info('Loading BGE-M3 embedder')
     from src.indexing.embedder import Embedder
-    embedder = Embedder()
+    embedder = Embedder(model_path=str(model_paths[0]))
 
     logger.info('Loading BGE-Reranker')
     from src.retrieval.reranker import Reranker
-    reranker = Reranker()
-
-    logger.info('Loading LLM client')
-    from src.generation.llm_client import LLMClient
-    llm_client = LLMClient()
+    reranker = Reranker(model_path=str(model_paths[1]))
 
     logger.info('Loading hallucination guard')
     from src.generation.hallucination_guard import HallucinationGuard
-    guard = HallucinationGuard()
+    guard = HallucinationGuard(model_path=str(model_paths[2]))
 
     logger.info('Initializing document parser and chunker')
     from src.ingestion.parser import DocumentParser
     from src.ingestion.chunker import SemanticChunker
-    from src.utils.config import settings as _settings
-    parser = DocumentParser(_settings.docling_artifacts)
+    from src.generation.llm_client import LLMClient
+    from src.retrieval.hybrid_retriever import HybridRetriever
+    parser = DocumentParser(settings.docling_artifacts)
     chunker = SemanticChunker()
+    llm_client = LLMClient()
 
     app_state.update({
         'embedder': embedder,
         'reranker': reranker,
         'llm_client': llm_client,
         'guard': guard,
+        'retriever': HybridRetriever(llm_client),
         'parser': parser,
         'chunker': chunker,
         'models_loaded': True,
@@ -56,11 +67,12 @@ async def lifespan(app: FastAPI):
     session_store.start_cleanup()
     logger.info('Startup complete')
 
-    yield
-
-    logger.info('Shutting down Board Intelligence System')
-    if session_store._cleanup_task:
-        session_store._cleanup_task.cancel()
+    try:
+        yield
+    finally:
+        await session_store.shutdown()
+        await llm_client.close()
+        app_state.clear()
 
 
 app = FastAPI(
@@ -71,10 +83,10 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=['http://localhost:5173'],
+    allow_origins=['http://localhost:5173', 'http://127.0.0.1:5173'],
     allow_credentials=True,
     allow_methods=['GET', 'POST', 'DELETE'],
-    allow_headers=['Content-Type', 'X-Session-ID'],
+    allow_headers=['Content-Type', 'X-Session-ID', 'X-Filename'],
 )
 
 app.include_router(ingest_router)
@@ -92,7 +104,7 @@ async def delete_session(session_id: str):
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logger.error(f'Unhandled exception: {exc}', exc_info=True)
+    logger.error('Unhandled exception: %s', type(exc).__name__)
     return JSONResponse(
         status_code=500,
         content={

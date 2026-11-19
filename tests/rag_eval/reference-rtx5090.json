@@ -1,0 +1,876 @@
+{
+  "created_at": "2026-11-19T20:12:09.203177+00:00",
+  "governance_replay": {
+    "metrics": {
+      "without_guard": {
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 4,
+        "true_negatives": 8,
+        "precision": null,
+        "recall": 0.0
+      },
+      "with_guard": {
+        "true_positives": 4,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "true_negatives": 8,
+        "precision": 1.0,
+        "recall": 1.0
+      }
+    },
+    "cases": [
+      {
+        "id": "G-01",
+        "pack": "harbor-works",
+        "page": 1,
+        "claim": "The Operations Committee approved the dock electrification proposal.",
+        "should_warn": true,
+        "warnings": [
+          "The cited evidence gives Operations Committee an advisory role on this decision."
+        ],
+        "with_guard": true,
+        "without_guard": false
+      },
+      {
+        "id": "G-02",
+        "pack": "harbor-works",
+        "page": 1,
+        "claim": "The Operations Committee reviewed the dock electrification proposal.",
+        "should_warn": false,
+        "warnings": [],
+        "with_guard": false,
+        "without_guard": false
+      },
+      {
+        "id": "G-03",
+        "pack": "harbor-works",
+        "page": 1,
+        "claim": "The Operations Committee authorized a two-phase rollout.",
+        "should_warn": true,
+        "warnings": [
+          "The cited evidence gives Operations Committee an advisory role on this decision."
+        ],
+        "with_guard": true,
+        "without_guard": false
+      },
+      {
+        "id": "G-04",
+        "pack": "harbor-works",
+        "page": 2,
+        "claim": "The Board approved phase one of the dock electrification project.",
+        "should_warn": false,
+        "warnings": [],
+        "with_guard": false,
+        "without_guard": false
+      },
+      {
+        "id": "G-05",
+        "pack": "cedar-transit",
+        "page": 1,
+        "claim": "The Capital Planning Committee approved replacing depot heating units.",
+        "should_warn": true,
+        "warnings": [
+          "The cited evidence gives Capital Planning Committee an advisory role on this decision."
+        ],
+        "with_guard": true,
+        "without_guard": false
+      },
+      {
+        "id": "G-06",
+        "pack": "cedar-transit",
+        "page": 1,
+        "claim": "The Capital Planning Committee recommended replacing depot heating units.",
+        "should_warn": false,
+        "warnings": [],
+        "with_guard": false,
+        "without_guard": false
+      },
+      {
+        "id": "G-07",
+        "pack": "cedar-transit",
+        "page": 2,
+        "claim": "The Audit Committee approved the 2027 internal audit plan.",
+        "should_warn": false,
+        "warnings": [],
+        "with_guard": false,
+        "without_guard": false
+      },
+      {
+        "id": "G-08",
+        "pack": "cedar-transit",
+        "page": 3,
+        "claim": "The Board approved the replacement of depot heating units.",
+        "should_warn": false,
+        "warnings": [],
+        "with_guard": false,
+        "without_guard": false
+      },
+      {
+        "id": "G-09",
+        "pack": "maple-energy",
+        "page": 1,
+        "claim": "The Sustainability Committee approved the methane monitoring pilot.",
+        "should_warn": true,
+        "warnings": [
+          "The cited evidence gives Sustainability Committee an advisory role on this decision."
+        ],
+        "with_guard": true,
+        "without_guard": false
+      },
+      {
+        "id": "G-10",
+        "pack": "maple-energy",
+        "page": 1,
+        "claim": "The Sustainability Committee reviewed the methane monitoring pilot.",
+        "should_warn": false,
+        "warnings": [],
+        "with_guard": false,
+        "without_guard": false
+      },
+      {
+        "id": "G-11",
+        "pack": "maple-energy",
+        "page": 2,
+        "claim": "The Risk Committee approved the revised incident escalation policy.",
+        "should_warn": false,
+        "warnings": [],
+        "with_guard": false,
+        "without_guard": false
+      },
+      {
+        "id": "G-12",
+        "pack": "maple-energy",
+        "page": 3,
+        "claim": "The Board approved a methane monitoring pilot at two facilities.",
+        "should_warn": false,
+        "warnings": [],
+        "with_guard": false,
+        "without_guard": false
+      }
+    ]
+  },
+  "api_evaluation": {
+    "metrics": {
+      "questions": 12,
+      "full_credited_answers": 9,
+      "answerable_questions": 9,
+      "retrieved_page_recall": 1.0,
+      "claim_citation_coverage": 1.0,
+      "annotated_claim_support": 1.0,
+      "correct_abstentions": 3,
+      "unanswerable_questions": 3,
+      "false_abstentions": 0,
+      "first_stream_chunk_median_seconds": 2.212,
+      "verified_response_median_seconds": 4.504
+    },
+    "cases": [
+      {
+        "id": "HW-01",
+        "pack": "harbor-works",
+        "question": "What did the Operations Committee review, and what did the Board approve?",
+        "facts": [
+          {
+            "match": "(?=.*operations committee)(?=.*review)(?=.*electrification)",
+            "pages": [
+              1
+            ]
+          },
+          {
+            "match": "(?=.*\\bboard\\b)(?=.*approv)(?=.*phase (?:one|1))",
+            "pages": [
+              2
+            ]
+          }
+        ],
+        "answer": "- The Operations Committee reviewed the dock electrification proposal. [Page 1]  \n- The Board approved phase one of the dock electrification project. [Page 2]",
+        "retrieved": [
+          {
+            "page_number": 1,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Harbor Works | Board Minutes** \n\n## **Operations Committee** \n\nThe Operations Committee reviewed the dock electrification proposal. The Operations Committee recommended a two-phase rollout to the Board. The committee requested an updated outage plan from the operation",
+            "reranker_score": 0.9838629961013794
+          },
+          {
+            "page_number": 2,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Harbor Works | Board Minutes** \n\n## **Board resolutions** \n\nThe Board approved phase one of the dock electrification project. The Board authorized $4.2 million for phase one of dock electrification. The Board deferred phase two of dock electrification until the July r",
+            "reranker_score": 0.26337099075317383
+          },
+          {
+            "page_number": 3,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Harbor Works | Board Minutes** \n\n## **Follow-up actions** \n\nThe operations director will deliver the updated outage plan by 18 June. The finance director will report on phase-one spending in July. The Board moved the next regular meeting to 24 July. Page 3 of 3",
+            "reranker_score": 0.0037372608203440905
+          }
+        ],
+        "verification": {
+          "status": "supported",
+          "warnings": [],
+          "claim_count": 2
+        },
+        "first_stream_chunk_seconds": 2.171,
+        "verified_response_seconds": 6.236,
+        "expected_abstention": false,
+        "abstained": false,
+        "facts_found": 2,
+        "facts_expected": 2,
+        "retrieved_gold_pages": 2,
+        "gold_pages": 2,
+        "claims": [
+          {
+            "claim": "The Operations Committee reviewed the dock electrification proposal. [Page 1]",
+            "pages": [
+              1
+            ],
+            "has_citation": true,
+            "annotated_support": true
+          },
+          {
+            "claim": "The Board approved phase one of the dock electrification project. [Page 2]",
+            "pages": [
+              2
+            ],
+            "has_citation": true,
+            "annotated_support": true
+          }
+        ]
+      },
+      {
+        "id": "HW-02",
+        "pack": "harbor-works",
+        "question": "How much did the Board authorize for phase one of dock electrification?",
+        "facts": [
+          {
+            "match": "\\$?4\\.2\\s*(?:million|m\\b)|4,200,000",
+            "pages": [
+              2
+            ]
+          }
+        ],
+        "answer": "- The Board authorized $4.2 million for phase one of dock electrification. [Page 2]",
+        "retrieved": [
+          {
+            "page_number": 2,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Harbor Works | Board Minutes** \n\n## **Board resolutions** \n\nThe Board approved phase one of the dock electrification project. The Board authorized $4.2 million for phase one of dock electrification. The Board deferred phase two of dock electrification until the July r",
+            "reranker_score": 0.9994342923164368
+          },
+          {
+            "page_number": 1,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Harbor Works | Board Minutes** \n\n## **Operations Committee** \n\nThe Operations Committee reviewed the dock electrification proposal. The Operations Committee recommended a two-phase rollout to the Board. The committee requested an updated outage plan from the operation",
+            "reranker_score": 0.04892316833138466
+          },
+          {
+            "page_number": 3,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Harbor Works | Board Minutes** \n\n## **Follow-up actions** \n\nThe operations director will deliver the updated outage plan by 18 June. The finance director will report on phase-one spending in July. The Board moved the next regular meeting to 24 July. Page 3 of 3",
+            "reranker_score": 0.0030360622331500053
+          }
+        ],
+        "verification": {
+          "status": "supported",
+          "warnings": [],
+          "claim_count": 1
+        },
+        "first_stream_chunk_seconds": 2.198,
+        "verified_response_seconds": 4.262,
+        "expected_abstention": false,
+        "abstained": false,
+        "facts_found": 1,
+        "facts_expected": 1,
+        "retrieved_gold_pages": 1,
+        "gold_pages": 1,
+        "claims": [
+          {
+            "claim": "The Board authorized $4.2 million for phase one of dock electrification. [Page 2]",
+            "pages": [
+              2
+            ],
+            "has_citation": true,
+            "annotated_support": true
+          }
+        ]
+      },
+      {
+        "id": "HW-03",
+        "pack": "harbor-works",
+        "question": "When is the updated outage plan due?",
+        "facts": [
+          {
+            "match": "18\\s+june|june\\s+18",
+            "pages": [
+              3
+            ]
+          }
+        ],
+        "answer": "- The operations director will deliver the updated outage plan by 18 June. [Page 3]",
+        "retrieved": [
+          {
+            "page_number": 3,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Harbor Works | Board Minutes** \n\n## **Follow-up actions** \n\nThe operations director will deliver the updated outage plan by 18 June. The finance director will report on phase-one spending in July. The Board moved the next regular meeting to 24 July. Page 3 of 3",
+            "reranker_score": 0.9529175162315369
+          },
+          {
+            "page_number": 1,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Harbor Works | Board Minutes** \n\n## **Operations Committee** \n\nThe Operations Committee reviewed the dock electrification proposal. The Operations Committee recommended a two-phase rollout to the Board. The committee requested an updated outage plan from the operation",
+            "reranker_score": 0.05492183938622475
+          },
+          {
+            "page_number": 2,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Harbor Works | Board Minutes** \n\n## **Board resolutions** \n\nThe Board approved phase one of the dock electrification project. The Board authorized $4.2 million for phase one of dock electrification. The Board deferred phase two of dock electrification until the July r",
+            "reranker_score": 4.4824937504017726e-05
+          }
+        ],
+        "verification": {
+          "status": "supported",
+          "warnings": [],
+          "claim_count": 1
+        },
+        "first_stream_chunk_seconds": 2.219,
+        "verified_response_seconds": 5.466,
+        "expected_abstention": false,
+        "abstained": false,
+        "facts_found": 1,
+        "facts_expected": 1,
+        "retrieved_gold_pages": 1,
+        "gold_pages": 1,
+        "claims": [
+          {
+            "claim": "The operations director will deliver the updated outage plan by 18 June. [Page 3]",
+            "pages": [
+              3
+            ],
+            "has_citation": true,
+            "annotated_support": true
+          }
+        ]
+      },
+      {
+        "id": "HW-04",
+        "pack": "harbor-works",
+        "question": "What did the board decide about opening an overseas office?",
+        "facts": [],
+        "answer": "I cannot find sufficient information in the document.",
+        "retrieved": [
+          {
+            "page_number": 2,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Harbor Works | Board Minutes** \n\n## **Board resolutions** \n\nThe Board approved phase one of the dock electrification project. The Board authorized $4.2 million for phase one of dock electrification. The Board deferred phase two of dock electrification until the July r",
+            "reranker_score": 0.0003622763033490628
+          },
+          {
+            "page_number": 3,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Harbor Works | Board Minutes** \n\n## **Follow-up actions** \n\nThe operations director will deliver the updated outage plan by 18 June. The finance director will report on phase-one spending in July. The Board moved the next regular meeting to 24 July. Page 3 of 3",
+            "reranker_score": 0.0002953657240141183
+          },
+          {
+            "page_number": 1,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Harbor Works | Board Minutes** \n\n## **Operations Committee** \n\nThe Operations Committee reviewed the dock electrification proposal. The Operations Committee recommended a two-phase rollout to the Board. The committee requested an updated outage plan from the operation",
+            "reranker_score": 0.0002142191951861605
+          }
+        ],
+        "verification": {
+          "status": "abstained",
+          "warnings": [],
+          "claim_count": 0
+        },
+        "first_stream_chunk_seconds": 2.134,
+        "verified_response_seconds": 5.14,
+        "expected_abstention": true,
+        "abstained": true,
+        "facts_found": 0,
+        "facts_expected": 0,
+        "retrieved_gold_pages": 0,
+        "gold_pages": 0,
+        "claims": []
+      },
+      {
+        "id": "CT-01",
+        "pack": "cedar-transit",
+        "question": "Who approved the 2027 internal audit plan?",
+        "facts": [
+          {
+            "match": "(?=.*audit committee)(?=.*approv)(?=.*audit plan)",
+            "pages": [
+              2
+            ]
+          }
+        ],
+        "answer": "- The Audit Committee approved the 2027 internal audit plan. [Page 2]",
+        "retrieved": [
+          {
+            "page_number": 2,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Cedar Transit | Governance Record** \n\n## **Audit Committee** \n\nThe Audit Committee approved the 2027 internal audit plan. The Audit Committee appointed Lena Park as engagement lead. The first audit review is scheduled for September. Page 2 of 3",
+            "reranker_score": 0.995811939239502
+          },
+          {
+            "page_number": 3,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Cedar Transit | Governance Record** \n\n## **Board decision** \n\nThe Board approved the replacement of depot heating units. The Board set a spending cap of $760,000 for depot heating units. The Board asked the finance team to report actual spending each quarter. Page 3 o",
+            "reranker_score": 5.190898446016945e-05
+          },
+          {
+            "page_number": 1,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Cedar Transit | Governance Record** \n\n## **Capital Planning Committee** \n\nThe Capital Planning Committee recommended replacing depot heating units. The Capital Planning Committee reviewed two equipment bids. The committee asked management to collect monthly energy fig",
+            "reranker_score": 2.002612382057123e-05
+          }
+        ],
+        "verification": {
+          "status": "supported",
+          "warnings": [],
+          "claim_count": 1
+        },
+        "first_stream_chunk_seconds": 2.215,
+        "verified_response_seconds": 4.5,
+        "expected_abstention": false,
+        "abstained": false,
+        "facts_found": 1,
+        "facts_expected": 1,
+        "retrieved_gold_pages": 1,
+        "gold_pages": 1,
+        "claims": [
+          {
+            "claim": "The Audit Committee approved the 2027 internal audit plan. [Page 2]",
+            "pages": [
+              2
+            ],
+            "has_citation": true,
+            "annotated_support": true
+          }
+        ]
+      },
+      {
+        "id": "CT-02",
+        "pack": "cedar-transit",
+        "question": "What did the Capital Planning Committee recommend?",
+        "facts": [
+          {
+            "match": "(?=.*replac)(?=.*depot heating units)",
+            "pages": [
+              1
+            ]
+          }
+        ],
+        "answer": "- The Capital Planning Committee recommended replacing depot heating units. [Page 1]",
+        "retrieved": [
+          {
+            "page_number": 1,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Cedar Transit | Governance Record** \n\n## **Capital Planning Committee** \n\nThe Capital Planning Committee recommended replacing depot heating units. The Capital Planning Committee reviewed two equipment bids. The committee asked management to collect monthly energy fig",
+            "reranker_score": 0.9983275532722473
+          },
+          {
+            "page_number": 2,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Cedar Transit | Governance Record** \n\n## **Audit Committee** \n\nThe Audit Committee approved the 2027 internal audit plan. The Audit Committee appointed Lena Park as engagement lead. The first audit review is scheduled for September. Page 2 of 3",
+            "reranker_score": 0.0002524188603274524
+          },
+          {
+            "page_number": 3,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Cedar Transit | Governance Record** \n\n## **Board decision** \n\nThe Board approved the replacement of depot heating units. The Board set a spending cap of $760,000 for depot heating units. The Board asked the finance team to report actual spending each quarter. Page 3 o",
+            "reranker_score": 0.00014950844342820346
+          }
+        ],
+        "verification": {
+          "status": "supported",
+          "warnings": [],
+          "claim_count": 1
+        },
+        "first_stream_chunk_seconds": 2.234,
+        "verified_response_seconds": 4.207,
+        "expected_abstention": false,
+        "abstained": false,
+        "facts_found": 1,
+        "facts_expected": 1,
+        "retrieved_gold_pages": 1,
+        "gold_pages": 1,
+        "claims": [
+          {
+            "claim": "The Capital Planning Committee recommended replacing depot heating units. [Page 1]",
+            "pages": [
+              1
+            ],
+            "has_citation": true,
+            "annotated_support": true
+          }
+        ]
+      },
+      {
+        "id": "CT-03",
+        "pack": "cedar-transit",
+        "question": "What was the spending cap for the depot heating units?",
+        "facts": [
+          {
+            "match": "760[ ,]?000|760\\s*k\\b",
+            "pages": [
+              3
+            ]
+          }
+        ],
+        "answer": "- The Board set a spending cap of $760,000 for depot heating units. [Page 3]",
+        "retrieved": [
+          {
+            "page_number": 3,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Cedar Transit | Governance Record** \n\n## **Board decision** \n\nThe Board approved the replacement of depot heating units. The Board set a spending cap of $760,000 for depot heating units. The Board asked the finance team to report actual spending each quarter. Page 3 o",
+            "reranker_score": 0.9974223375320435
+          },
+          {
+            "page_number": 1,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Cedar Transit | Governance Record** \n\n## **Capital Planning Committee** \n\nThe Capital Planning Committee recommended replacing depot heating units. The Capital Planning Committee reviewed two equipment bids. The committee asked management to collect monthly energy fig",
+            "reranker_score": 0.015715770423412323
+          },
+          {
+            "page_number": 2,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Cedar Transit | Governance Record** \n\n## **Audit Committee** \n\nThe Audit Committee approved the 2027 internal audit plan. The Audit Committee appointed Lena Park as engagement lead. The first audit review is scheduled for September. Page 2 of 3",
+            "reranker_score": 1.6759930076659657e-05
+          }
+        ],
+        "verification": {
+          "status": "supported",
+          "warnings": [],
+          "claim_count": 1
+        },
+        "first_stream_chunk_seconds": 2.214,
+        "verified_response_seconds": 4.404,
+        "expected_abstention": false,
+        "abstained": false,
+        "facts_found": 1,
+        "facts_expected": 1,
+        "retrieved_gold_pages": 1,
+        "gold_pages": 1,
+        "claims": [
+          {
+            "claim": "The Board set a spending cap of $760,000 for depot heating units. [Page 3]",
+            "pages": [
+              3
+            ],
+            "has_citation": true,
+            "annotated_support": true
+          }
+        ]
+      },
+      {
+        "id": "CT-04",
+        "pack": "cedar-transit",
+        "question": "What acquisition target did the Board select?",
+        "facts": [],
+        "answer": "I cannot find sufficient information in the document.",
+        "retrieved": [
+          {
+            "page_number": 3,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Cedar Transit | Governance Record** \n\n## **Board decision** \n\nThe Board approved the replacement of depot heating units. The Board set a spending cap of $760,000 for depot heating units. The Board asked the finance team to report actual spending each quarter. Page 3 o",
+            "reranker_score": 0.00260350969620049
+          },
+          {
+            "page_number": 1,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Cedar Transit | Governance Record** \n\n## **Capital Planning Committee** \n\nThe Capital Planning Committee recommended replacing depot heating units. The Capital Planning Committee reviewed two equipment bids. The committee asked management to collect monthly energy fig",
+            "reranker_score": 0.0008853504550643265
+          },
+          {
+            "page_number": 2,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Cedar Transit | Governance Record** \n\n## **Audit Committee** \n\nThe Audit Committee approved the 2027 internal audit plan. The Audit Committee appointed Lena Park as engagement lead. The first audit review is scheduled for September. Page 2 of 3",
+            "reranker_score": 0.000288572337012738
+          }
+        ],
+        "verification": {
+          "status": "abstained",
+          "warnings": [],
+          "claim_count": 0
+        },
+        "first_stream_chunk_seconds": 2.13,
+        "verified_response_seconds": 4.449,
+        "expected_abstention": true,
+        "abstained": true,
+        "facts_found": 0,
+        "facts_expected": 0,
+        "retrieved_gold_pages": 0,
+        "gold_pages": 0,
+        "claims": []
+      },
+      {
+        "id": "ME-01",
+        "pack": "maple-energy",
+        "question": "How many facilities did the Sustainability Committee recommend, and how many did the Board approve for the pilot?",
+        "facts": [
+          {
+            "match": "(?=.*recommend)(?=.*(?:three|3) facilities)",
+            "pages": [
+              1
+            ]
+          },
+          {
+            "match": "(?=.*approv)(?=.*(?:two|2) facilities)",
+            "pages": [
+              3
+            ]
+          }
+        ],
+        "answer": "- The Sustainability Committee recommended a pilot at three facilities. [Page 1]  \n- The Board approved a methane monitoring pilot at two facilities. [Page 3]",
+        "retrieved": [
+          {
+            "page_number": 1,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Maple Energy | Board and Committee Record** \n\n## **Sustainability Committee** \n\nThe Sustainability Committee reviewed the methane monitoring pilot. The Sustainability Committee recommended a pilot at three facilities. The committee requested a baseline emissions repor",
+            "reranker_score": 0.9974495768547058
+          },
+          {
+            "page_number": 3,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Maple Energy | Board and Committee Record** \n\n## **Board resolutions** \n\nThe Board approved a methane monitoring pilot at two facilities. The Board allocated $285,000 to the methane monitoring pilot. The Board assigned the pilot to Chief Operating Officer Mara Sen. Pa",
+            "reranker_score": 0.863844633102417
+          },
+          {
+            "page_number": 2,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Maple Energy | Board and Committee Record** \n\n## **Risk Committee** \n\nThe Risk Committee approved the revised incident escalation policy. The Risk Committee set the escalation threshold at 30 minutes. The next policy review is scheduled for December. Page 2 of 3",
+            "reranker_score": 0.0006854436360299587
+          }
+        ],
+        "verification": {
+          "status": "supported",
+          "warnings": [],
+          "claim_count": 2
+        },
+        "first_stream_chunk_seconds": 2.255,
+        "verified_response_seconds": 5.756,
+        "expected_abstention": false,
+        "abstained": false,
+        "facts_found": 2,
+        "facts_expected": 2,
+        "retrieved_gold_pages": 2,
+        "gold_pages": 2,
+        "claims": [
+          {
+            "claim": "The Sustainability Committee recommended a pilot at three facilities. [Page 1]",
+            "pages": [
+              1
+            ],
+            "has_citation": true,
+            "annotated_support": true
+          },
+          {
+            "claim": "The Board approved a methane monitoring pilot at two facilities. [Page 3]",
+            "pages": [
+              3
+            ],
+            "has_citation": true,
+            "annotated_support": true
+          }
+        ]
+      },
+      {
+        "id": "ME-02",
+        "pack": "maple-energy",
+        "question": "What policy did the Risk Committee approve?",
+        "facts": [
+          {
+            "match": "incident escalation policy",
+            "pages": [
+              2
+            ]
+          }
+        ],
+        "answer": "- The Risk Committee approved the revised incident escalation policy. [Page 2]",
+        "retrieved": [
+          {
+            "page_number": 2,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Maple Energy | Board and Committee Record** \n\n## **Risk Committee** \n\nThe Risk Committee approved the revised incident escalation policy. The Risk Committee set the escalation threshold at 30 minutes. The next policy review is scheduled for December. Page 2 of 3",
+            "reranker_score": 0.9964918494224548
+          },
+          {
+            "page_number": 1,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Maple Energy | Board and Committee Record** \n\n## **Sustainability Committee** \n\nThe Sustainability Committee reviewed the methane monitoring pilot. The Sustainability Committee recommended a pilot at three facilities. The committee requested a baseline emissions repor",
+            "reranker_score": 0.0003902312892023474
+          },
+          {
+            "page_number": 3,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Maple Energy | Board and Committee Record** \n\n## **Board resolutions** \n\nThe Board approved a methane monitoring pilot at two facilities. The Board allocated $285,000 to the methane monitoring pilot. The Board assigned the pilot to Chief Operating Officer Mara Sen. Pa",
+            "reranker_score": 0.0003796434320975095
+          }
+        ],
+        "verification": {
+          "status": "supported",
+          "warnings": [],
+          "claim_count": 1
+        },
+        "first_stream_chunk_seconds": 2.211,
+        "verified_response_seconds": 4.484,
+        "expected_abstention": false,
+        "abstained": false,
+        "facts_found": 1,
+        "facts_expected": 1,
+        "retrieved_gold_pages": 1,
+        "gold_pages": 1,
+        "claims": [
+          {
+            "claim": "The Risk Committee approved the revised incident escalation policy. [Page 2]",
+            "pages": [
+              2
+            ],
+            "has_citation": true,
+            "annotated_support": true
+          }
+        ]
+      },
+      {
+        "id": "ME-03",
+        "pack": "maple-energy",
+        "question": "Who did the Board assign to lead the methane monitoring pilot?",
+        "facts": [
+          {
+            "match": "mara sen|chief operating officer",
+            "pages": [
+              3
+            ]
+          }
+        ],
+        "answer": "- The Board assigned the methane monitoring pilot to Chief Operating Officer Mara Sen. [Page 3]",
+        "retrieved": [
+          {
+            "page_number": 3,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Maple Energy | Board and Committee Record** \n\n## **Board resolutions** \n\nThe Board approved a methane monitoring pilot at two facilities. The Board allocated $285,000 to the methane monitoring pilot. The Board assigned the pilot to Chief Operating Officer Mara Sen. Pa",
+            "reranker_score": 0.9957697987556458
+          },
+          {
+            "page_number": 1,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Maple Energy | Board and Committee Record** \n\n## **Sustainability Committee** \n\nThe Sustainability Committee reviewed the methane monitoring pilot. The Sustainability Committee recommended a pilot at three facilities. The committee requested a baseline emissions repor",
+            "reranker_score": 0.5827796459197998
+          },
+          {
+            "page_number": 2,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Maple Energy | Board and Committee Record** \n\n## **Risk Committee** \n\nThe Risk Committee approved the revised incident escalation policy. The Risk Committee set the escalation threshold at 30 minutes. The next policy review is scheduled for December. Page 2 of 3",
+            "reranker_score": 0.0002511719358153641
+          }
+        ],
+        "verification": {
+          "status": "needs_review",
+          "warnings": [
+            {
+              "kind": "low_support",
+              "message": "Page 3 does not clearly support this claim.",
+              "snippet": "The Board assigned the methane monitoring pilot to Chief Operating Officer Mara "
+            }
+          ],
+          "claim_count": 1
+        },
+        "first_stream_chunk_seconds": 2.214,
+        "verified_response_seconds": 5.46,
+        "expected_abstention": false,
+        "abstained": false,
+        "facts_found": 1,
+        "facts_expected": 1,
+        "retrieved_gold_pages": 1,
+        "gold_pages": 1,
+        "claims": [
+          {
+            "claim": "The Board assigned the methane monitoring pilot to Chief Operating Officer Mara Sen. [Page 3]",
+            "pages": [
+              3
+            ],
+            "has_citation": true,
+            "annotated_support": true
+          }
+        ]
+      },
+      {
+        "id": "ME-04",
+        "pack": "maple-energy",
+        "question": "Which supplier did the Board select for the methane monitoring pilot?",
+        "facts": [],
+        "answer": "I cannot find sufficient information in the document.",
+        "retrieved": [
+          {
+            "page_number": 3,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Maple Energy | Board and Committee Record** \n\n## **Board resolutions** \n\nThe Board approved a methane monitoring pilot at two facilities. The Board allocated $285,000 to the methane monitoring pilot. The Board assigned the pilot to Chief Operating Officer Mara Sen. Pa",
+            "reranker_score": 0.837395191192627
+          },
+          {
+            "page_number": 1,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Maple Energy | Board and Committee Record** \n\n## **Sustainability Committee** \n\nThe Sustainability Committee reviewed the methane monitoring pilot. The Sustainability Committee recommended a pilot at three facilities. The committee requested a baseline emissions repor",
+            "reranker_score": 0.5986882448196411
+          },
+          {
+            "page_number": 2,
+            "chunk_type": "text",
+            "section_heading": "FICTIONAL BOARD MATERIAL",
+            "text": "FICTIONAL BOARD MATERIAL \n\n## **Maple Energy | Board and Committee Record** \n\n## **Risk Committee** \n\nThe Risk Committee approved the revised incident escalation policy. The Risk Committee set the escalation threshold at 30 minutes. The next policy review is scheduled for December. Page 2 of 3",
+            "reranker_score": 0.0004632578056771308
+          }
+        ],
+        "verification": {
+          "status": "abstained",
+          "warnings": [],
+          "claim_count": 0
+        },
+        "first_stream_chunk_seconds": 2.156,
+        "verified_response_seconds": 4.508,
+        "expected_abstention": true,
+        "abstained": true,
+        "facts_found": 0,
+        "facts_expected": 0,
+        "retrieved_gold_pages": 0,
+        "gold_pages": 0,
+        "claims": []
+      }
+    ]
+  }
+}

@@ -3,9 +3,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Manrope (wordmark) + Inter (UI) via CDN - fall back to system fonts offline */
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@700&family=Inter:wght@300;400;500;600;700&display=swap');
-
 @layer base {
   *, *::before, *::after {
     box-sizing: border-box;
@@ -20,7 +17,7 @@
   body {
     background-color: #020617;
     color: #F8FAFC;
-    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
     font-size: 16px;
     line-height: 1.5;
   }

@@ -1,6 +1,7 @@
 # src/generation/hallucination_guard.py
 import asyncio
 import re
+from src.generation.citation_injector import extract_citation_tags, extract_claims, is_abstention
 from src.utils.config import settings
 from src.utils.logger import get_logger
 
@@ -279,9 +280,6 @@ _BOARD_RESOLUTION_RE = re.compile(
 )
 
 
-_HEADING_RE = re.compile(r'^\*{1,2}[^*\n]+\*{1,2}:?\s*$')
-
-
 def _classify_subject_committee(question: str, chunks: list, response_text: str = '') -> str:
     '''
     Return "advisory", "oversight", or "unknown" based on which committee type
@@ -313,24 +311,6 @@ def _classify_subject_committee(question: str, chunks: list, response_text: str 
     if advisory_hits > oversight_hits:
         return 'advisory'
     return 'unknown'
-
-
-def _split_sentences(text: str) -> list:
-    # Split on sentence-ending punctuation, bullet/numbered list markers, and
-    # markdown headings so each bullet gets its own NLI score rather than the
-    # whole formatted block (a heading glued to a bullet crushes NLI scores).
-    # The \u2022 escape is the round bullet character, escaped so the file stays ASCII.
-    raw = re.split('(?<=[.!?])\\s+|\\n(?=\\s*[-*\u2022]\\s)|\\n(?=\\s*\\*\\*)', text.strip())
-    results = []
-    for p in raw:
-        p = p.strip()
-        if not p:
-            continue
-        # Skip markdown headings -- they are structural labels, not factual claims.
-        if _HEADING_RE.match(p):
-            continue
-        results.append(p)
-    return results
 
 
 def _split_source_sentences(chunks: list) -> list:
@@ -686,6 +666,53 @@ def _check_verb_inflation(sentence: str, chunks: list, committee_type: str = 'un
     return warnings
 
 
+_DIRECT_COMMITTEE_DECISION_RE = re.compile(
+    r'^(?:the\s+)?(?P<actor>(?:[a-z][\w-]*\s+){0,5}committee)\s+'
+    r'(?P<verb>approv(?:es|ed)|authoriz(?:es|ed)|adopt(?:s|ed)|ratif(?:ies|ied)|decid(?:es|ed))'
+    r'\s+(?P<subject>.+)',
+    re.IGNORECASE,
+)
+
+
+def _check_named_committee_decision(claim: str, chunks: list) -> list[str]:
+    clean = _CITATION_RE.sub('', claim).replace('*', '').strip()
+    decision = _DIRECT_COMMITTEE_DECISION_RE.match(clean)
+    if not decision:
+        return []
+
+    actor = decision['actor']
+    verb = _EXEC_VERB_PATTERNS[decision['verb'].lower()]
+    topic = set(re.findall(r'\b[a-z]{4,}\b', decision['subject'].lower()))
+    actor_action = re.compile(r'\b' + re.escape(actor) + r'\s+(?P<action>.+)', re.I)
+    advisory_evidence = False
+    for source in _split_source_sentences(chunks):
+        action = actor_action.search(source)
+        if not action:
+            continue
+        remainder = action['action']
+        source_topic = set(re.findall(r'\b[a-z]{4,}\b', remainder.lower()))
+        if not topic.intersection(source_topic):
+            continue
+        if verb.match(remainder):
+            return []
+        if re.match(r'(?:review\w*|recommend\w*|advis\w*|discuss\w*|consider\w*)\b', remainder, re.I):
+            advisory_evidence = True
+
+    if advisory_evidence:
+        return [f'The cited evidence gives {actor} an advisory role on this decision.']
+    return []
+
+
+def governance_findings(claim: str, chunks: list, question: str = '') -> list[str]:
+    committee = _classify_subject_committee(question, chunks, claim)
+    authority = _check_named_committee_decision(claim, chunks)
+    return (
+        (authority or _check_verb_inflation(claim, chunks, committee))
+        + _check_scope_broadening(claim, chunks, committee)
+        + _check_event_attribution(claim, chunks)
+    )
+
+
 class HallucinationGuard:
     def __init__(self, model_path: str = None):
         from transformers import pipeline
@@ -698,49 +725,13 @@ class HallucinationGuard:
         self._threshold = settings.nli_entailment_threshold
         logger.info(f'HallucinationGuard loaded NLI model from {path} on CPU')
 
-    def _nli_score(self, sentence: str, premise: str) -> float:
-        # Zero-shot NLI: the chunk text is the premise (sequence) and the
-        # response sentence is the hypothesis (candidate label). The score is
-        # the entailment probability of the sentence given the chunk.
-        try:
-            result = self._pipe(
-                premise,
-                candidate_labels=[sentence],
-                hypothesis_template='{}',
-                multi_label=True,
-            )
-            return float(result['scores'][0])
-        except Exception:
-            return 0.0
+    def _nli_score(self, claim: str, premise: str) -> float:
+        result = self._pipe(
+            premise, candidate_labels=[claim], hypothesis_template='{}', multi_label=True,
+        )
+        return float(result['scores'][0])
 
-    def _verify_sentence(self, sentence: str, chunks: list, committee_type: str = 'unknown') -> tuple:
-        # If the citation injector already flagged this sentence as unverifiable,
-        # skip NLI -- a second warning is redundant noise on top of the existing flag.
-        if '[unverifiable citation]' in sentence:
-            return True, 1.0, []
-
-        # NLI hypothesis must be plain prose: citation tags, bullet markers,
-        # and markdown bold are formatting noise that crushes entailment scores.
-        nli_text = _CITATION_RE.sub('', sentence)
-        nli_text = re.sub(r'\*\*([^*\n]+)\*\*:?', r'\1', nli_text)
-        nli_text = re.sub(r'^\s*[-*\u2022]\s+', '', nli_text)
-        nli_text = re.sub(r'\s+', ' ', nli_text).strip()
-
-        # The NLI model is trained on single-sentence premises: scoring a claim
-        # against a whole multi-sentence chunk collapses entailment to ~0 even
-        # for clearly supported claims. Score against individual source
-        # sentences instead, pre-filtered by keyword overlap to bound cost.
-        candidates = _top_candidate_premises(nli_text, _split_source_sentences(chunks))
-        max_entailment = 0.0
-        for premise in candidates:
-            score = self._nli_score(nli_text, premise)
-            if score > max_entailment:
-                max_entailment = score
-            if max_entailment >= self._threshold:
-                break
-
-        verified = max_entailment >= self._threshold
-
+    def _numeric_warnings(self, sentence: str, chunks: list) -> list:
         numeric_warnings = []
         if settings.numeric_verification:
             all_chunk_text = ' '.join(c['text'] for c in chunks)
@@ -775,134 +766,63 @@ class HallucinationGuard:
                     f'"{word}" -- this quantity does not appear (as word or digit) in the retrieved passages'
                 )
 
-        verb_warnings = _check_verb_inflation(sentence, chunks, committee_type)
-        scope_warnings = _check_scope_broadening(sentence, chunks, committee_type)
-        event_warnings = _check_event_attribution(sentence, chunks)
+        return numeric_warnings
 
-        return verified, max_entailment, numeric_warnings + verb_warnings + scope_warnings + event_warnings
+    def _verify_claim(self, claim: str, pages: dict, question: str) -> list[dict]:
+        def finding(kind: str, message: str) -> dict:
+            return {'kind': kind, 'message': message, 'snippet': claim[:80]}
 
-    def _check_citation_mismatches(self, response_text: str, chunks: list) -> list:
-        '''
-        Parse individual bullet-level claims from the response and verify that
-        each [Page N] citation is supported by a retrieved chunk from that page.
+        cited_pages = dict.fromkeys(extract_citation_tags(claim))
+        if '[unverifiable citation]' in claim or any(page not in pages for page in cited_pages):
+            return [finding('invalid_citation', 'A cited page was absent from the retrieved passages.')]
+        if not cited_pages:
+            return [finding('missing_citation', 'This claim has no page citation.')]
 
-        Two checks per citation:
-        1. Page not in retrieved chunks at all -> strong mismatch
-        2. Page in chunks but low lexical overlap with the specific claim ->
-           soft mismatch, with hint about which page has better support
+        hypothesis = _CITATION_RE.sub('', claim)
+        hypothesis = re.sub(r'\*\*([^*\n]+)\*\*', r'\1', hypothesis)
+        hypothesis = ' '.join(hypothesis.split())
+        if not hypothesis:
+            return [finding('missing_claim', 'The citation has no accompanying claim.')]
 
-        Uses words of 5+ characters to avoid noise from common short words.
-        One warning per suspicious page number to avoid repetition.
-        '''
-        # Build page -> chunk text map from retrieved chunks.
-        page_map = {}
+        warnings = []
+        cited_chunks = []
+        for number in cited_pages:
+            passages = pages[number]
+            cited_chunks.extend(passages)
+            candidates = _top_candidate_premises(hypothesis, _split_source_sentences(passages))
+            if not any(self._nli_score(hypothesis, premise) >= self._threshold for premise in candidates):
+                warnings.append(finding(
+                    'low_support', f'Page {number} does not clearly support this claim.',
+                ))
+
+        warnings.extend(finding('numeric', msg) for msg in self._numeric_warnings(hypothesis, cited_chunks))
+        warnings.extend(finding('governance', msg) for msg in governance_findings(claim, cited_chunks, question))
+        return warnings
+
+    async def verify(self, response_text: str, chunks: list, question: str = '') -> dict:
+        if is_abstention(response_text):
+            return {'status': 'abstained', 'warnings': [], 'claim_count': 0}
+
+        claims = extract_claims(response_text)
+        if not claims:
+            return {
+                'status': 'needs_review',
+                'warnings': [{'kind': 'missing_claim', 'message': 'The answer contains no checkable claims.', 'snippet': ''}],
+                'claim_count': 0,
+            }
+
+        pages = {}
         for chunk in chunks:
-            page = chunk.get('page_number')
-            if page is not None:
-                page_map.setdefault(int(page), []).append(chunk.get('text', ''))
-        retrieved_pages = set(page_map.keys())
+            number = chunk.get('page_number')
+            if number is not None:
+                pages.setdefault(number, []).append(chunk)
 
-        # Parse individual bullets with their trailing [Page N] citations.
-        bullet_re = re.compile(r'[-*]\s+(.+?)\s*\[Page\s+(\d+)\]', re.MULTILINE)
-        warned_pages = set()
         warnings = []
-
-        for match in bullet_re.finditer(response_text):
-            claim_raw = match.group(1).strip()
-            page_num = int(match.group(2))
-
-            if page_num in warned_pages:
-                continue
-
-            if page_num not in retrieved_pages:
-                warnings.append(
-                    f'[Page {page_num}] cited but no matching passage was retrieved '
-                    f'from that page -- this citation cannot be verified'
-                )
-                warned_pages.add(page_num)
-                continue
-
-            # Check lexical overlap between the claim and the page chunk.
-            claim_words = set(re.findall(r'\b[a-z]{5,}\b', claim_raw.lower()))
-            if len(claim_words) < 3:
-                continue  # Claim too short to check reliably.
-
-            page_text = ' '.join(page_map[page_num]).lower()
-            page_words = set(re.findall(r'\b[a-z]{5,}\b', page_text))
-            overlap = len(claim_words & page_words) / len(claim_words)
-
-            if overlap < 0.25:
-                # Find the page with strongest support.
-                best_page = max(
-                    (p for p in retrieved_pages if p != page_num),
-                    key=lambda p: len(
-                        claim_words & set(re.findall(
-                            r'\b[a-z]{5,}\b',
-                            ' '.join(page_map[p]).lower(),
-                        ))
-                    ),
-                    default=None,
-                )
-                if best_page is not None:
-                    best_overlap = len(
-                        claim_words & set(re.findall(
-                            r'\b[a-z]{5,}\b',
-                            ' '.join(page_map[best_page]).lower(),
-                        ))
-                    ) / len(claim_words)
-                    if best_overlap > overlap + 0.30:
-                        warnings.append(
-                            f'[Page {page_num}] has weak overlap with this claim '
-                            f'({overlap:.0%} shared keywords); '
-                            f'page {best_page} appears to be a better source '
-                            f'({best_overlap:.0%} overlap)'
-                        )
-                        warned_pages.add(page_num)
-
-        return warnings
-
-    async def verify(self, response_text: str, chunks: list, question: str = '') -> list:
-        '''
-        Returns a list of warning dicts: {message: str, snippet: str}.
-        snippet is the first 80 chars of the sentence that triggered the warning
-        (empty string for bulk citation warnings).
-
-        question: the original user question, used to classify which committee
-        type is being discussed so verb inflation checks can be suppressed for
-        oversight committees (Audit Committee, Risk Committee).
-        '''
-        committee_type = _classify_subject_committee(question, chunks, response_text)
-        if committee_type == 'oversight':
-            logger.info(
-                'HallucinationGuard: oversight committee detected -- '
-                'skipping verb inflation and scope-broadening checks'
-            )
-        loop = asyncio.get_event_loop()
-        sentences = _split_sentences(response_text)
-        warnings = []
-
-        for sentence in sentences:
-            verified, score, extra_warns = await loop.run_in_executor(
-                None, self._verify_sentence, sentence, chunks, committee_type
-            )
-            snippet = sentence[:80]
-            if not verified:
-                warnings.append({
-                    'message': (
-                        f'"{sentence[:60]}..." -- '
-                        f'low support ({score:.2f}); this claim is not clearly '
-                        f'backed by the retrieved passages'
-                    ),
-                    'snippet': snippet,
-                })
-            for w in extra_warns:
-                warnings.append({'message': w, 'snippet': snippet})
-
-        # Bulk citation check -- operates at bullet level, not sentence level.
-        citation_warnings = await loop.run_in_executor(
-            None, self._check_citation_mismatches, response_text, chunks
-        )
-        for w in citation_warnings:
-            warnings.append({'message': w, 'snippet': ''})
-
-        return warnings
+        loop = asyncio.get_running_loop()
+        for claim in claims:
+            warnings.extend(await loop.run_in_executor(None, self._verify_claim, claim, pages, question))
+        return {
+            'status': 'needs_review' if warnings else 'supported',
+            'warnings': warnings,
+            'claim_count': len(claims),
+        }

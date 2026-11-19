@@ -1,12 +1,10 @@
-# /home/claude/board-intelligence/requirements.txt
-# Pinned dependencies for Board Intelligence System backend.
-# Install inside Docker with: pip install -r requirements.txt --break-system-packages
-# PyTorch is installed separately via cu128 wheel in Dockerfile.backend.
+# Backend dependencies. Install the CUDA 12.8 PyTorch wheel for the reference GPU first.
+# Use requirements-ci.txt for the CPU-only test suite.
 
 # ── Document Parsing ──────────────────────────────────────────────────────
 docling>=2.5.0
 pymupdf>=1.24.0
-pymupdf4llm>=0.0.17
+pymupdf4llm>=1.27.2.3
 rapidocr-onnxruntime>=1.2.0
 onnxruntime-gpu>=1.18.0
 
@@ -45,8 +43,9 @@ langchain>=0.3.0
 langchain-community>=0.3.0
 
 # ── Utilities ─────────────────────────────────────────────────────────────
-numpy>=1.26.0,<2.0
+numpy>=1.26.0
 python-dotenv>=1.0.0
+pyarrow>=17.0.0
 tenacity>=9.0.0
 tqdm>=4.66.0
 

@@ -10,7 +10,7 @@ os.environ.setdefault('VLLM_BASE_URL', 'http://localhost:11436')
 
 @pytest.fixture
 def sample_pdf_path() -> Path:
-    return Path(__file__).parent / 'fixtures' / 'sample_board_doc.pdf'
+    return Path(__file__).parents[1] / 'examples' / 'board-minutes.pdf'
 
 
 @pytest.fixture

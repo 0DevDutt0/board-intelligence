@@ -23,8 +23,8 @@ _HYDE_SYSTEM = (
 
 
 class HybridRetriever:
-    def __init__(self):
-        self._llm_client = None
+    def __init__(self, llm_client=None):
+        self._llm_client = llm_client
 
     def _get_llm_client(self):
         if self._llm_client is None:
@@ -82,12 +82,9 @@ class HybridRetriever:
                         embed_query = f'{query}\n\n{hyde_answer}'
                     else:
                         embed_query = hyde_answer
-                    logger.info(
-                        f'HyDE expanded query; hypothetical preview: '
-                        f'{hyde_answer[:120].replace(chr(10), " ")!r}'
-                    )
-            except Exception as exc:
-                logger.warning(f'HyDE generation failed: {exc}. Using original query.')
+                    logger.info('HyDE expanded the query')
+            except Exception:
+                logger.warning('HyDE generation failed. Using the original query.')
 
         loop = asyncio.get_event_loop()
 
